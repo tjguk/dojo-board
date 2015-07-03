@@ -14,26 +14,23 @@ class Board(object):
     print(b[2, 2])
     """
     
-    def __init__(self, dimension_sizes, _global_board=None, _global_offset=None):
+    def __init__(self, dimension_sizes, _global_board=None, _from_global_function=None, _to_global_function=None):
         """Set up a n-dimensional board
-        
-        dimensions - a tuple of dimensions; can be Nones if the board is infinite
-        wrap - does the board wrap when trying to find the next cell in each direction?
-        infinite - is the board infinite?
         """
-        self._dimensions = [range(size) if size else None for size in dimension_sizes]
+        self.dimensions = [list(range(size or 0)) for size in dimension_sizes]
 
         #
         # This can be a sub-board of another board: a slice.
         # If that's the case, the boards share a common data structure
-        # and this one is offset from the other. NB this means that if 
-        # a slice is taken of a slice, the offset must itself be offset!
+        # and this one is offset from the other, possibly with fewer dimensions. 
+        # NB this means that if a slice is taken of a slice, the offset must itself be offset!
         #
         self._data = _global_board or {}
-        self._offset = _global_offset or tuple(0 for d in self._dimensions)
+        self._to_global_function = _to_global_function or lambda coord: coord
+        self._from_global_function = _from_global_function or lambda coord: coord
 
     def _is_in_bounds(self, coord):
-        return all(d is None or c in d for (c, d) in zip(coord, self._dimensions))
+        return all(d is None or c in d for (c, d) in zip(coord, self.dimensions))
     
     def _local_to_global(self, coord):
         return tuple(c + o for (c, o) in zip(coord, self._offset))
@@ -51,7 +48,7 @@ class Board(object):
                 if _is_in_bounds(local_coord):
                     yield coord
         else:
-            for coord in itertools.product(itertools.count(size) for size in self.dimension_sizes 
+            for coord in itertools.product(itertools.count(len(dimension)) for dimension in self.dimensions)
                 
 
     def clear(self):
@@ -90,14 +87,17 @@ class Board(object):
         
         Return a coordinate
         """
-        if len(coord) != len(self._dimensions):
-            raise ValueError("Coordinate %s has %d dimensions; the board has %d" % (coord, len(coord), len(self._dimensions)))
+        if len(coord) != len(self.dimensions):
+            raise IndexError("Coordinate %s has %d dimensions; the board has %d" % (coord, len(coord), len(self.dimensions)))
 
-        for (c, d) in zip(coord, self._dimensions):
-            if d is None:
+        for (c, d) in zip(coord, self.dimensions):
+            if not d:
+                #
+                # This dimension is infinite
+                #
                 continue
             if c not in d:
-                raise ValueError("Coordinate %s is out-of-bounds" % coord)
+                raise IndexError("Coordinate %s is out-of-bounds" % coord)
         
         return tuple(c + o for (c, o) in zip(coord, self._offset))
     
@@ -107,7 +107,7 @@ class Board(object):
         
     def is_in_bounds(self, loc):
         if len(loc) != self.num_dimensions:
-            raise ValueError("Wrong number of dimensions for given key")
+            raise IndexError("Wrong number of dimensions for given key")
         
         if loc not in self._in_bounds:
             
@@ -129,7 +129,7 @@ class Board(object):
         if self.is_in_bounds(loc):
             return loc
         else:
-            raise ValueError("Location out of bounds")
+            raise IndexError("Location out of bounds")
 
     def occupied(self):
         minmax = [[float('inf'), float('-inf')]] * self.num_dimensions
