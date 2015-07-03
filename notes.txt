@@ -1,0 +1,2 @@
+* Thought of having the dimensions passed in a iterables; but too inefficient, and confusing (what if an iterable had all the odd numbers?0
+
