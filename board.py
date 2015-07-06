@@ -75,16 +75,28 @@ class Board(object):
     def _iterate(self, only_used=True):
         """Generate the list of local coordinates. If one or more dimensions
         is infinite, only the bounding box of used coordinates will be 
-        produced
+        produced.
         """
-        if only_used:
-            for coord in self._data:
-                lcoord = self._from_global(coord)
+        #
+        # Because we don't want to iterate infinitely over our infinite dimension,
+        # treat an infinite dimension as the bounding box of its data or, if there is
+        # not data on the board, a single [None] dimension.
+        #
+        dimensions = []
+        for n_dimension, dimension in enumerate(self.dimensions):
+            if not dimension:
+                dmin, dmax = self._occupied_dimension(n_dimension)
+                if dmin is None: # no data on the board
+                    dimension.append([None])
+                else:
+                    dimensions.append(range(dmin, 1 + dmax))
+
+        for lcoord in itertools.product(*(d if d else itertools.count() for d in dimensions)):
+            if only_used:
                 if self._is_in_bounds(lcoord):
                     yield lcoord
-        else:
-            for coord in self:
-                yield coord
+            else:
+                yield lcoord
 
     def _iterate_g(self, only_used=True):
         """Generate the list of global coordinates which fit inside our space, 
@@ -104,7 +116,7 @@ class Board(object):
         """Clear the data which belongs to this board, possibly a sub-board
         of a larger board.
         """
-        for coord in list(self._iterate_global(only_used=True)):
+        for coord in list(self._iterate_g(only_used=True)):
             del self._data[coord]
 
     def __getitem__(self, item):
@@ -167,23 +179,25 @@ class Board(object):
         offset = tuple(o + start for (o, (start, stop, step)) in zip(self._offset_from_global, slice_indices))
         return self.__class__(sizes, self._data, offset)
 
-    def occupied_dimension(self, n_dimension):
-
-    def occupied(self):
-        """(Apparently) return the bounding box of space occupied
+    def _occupied_dimension(self, n_dimension):
+        """Return the min/max along a particular dimension.
+        (Intended for internal use, eg when displaying an infinite dimension)
         """
-        minmax = [[float('inf'), float('-inf')]] * len(self.dimensions)
-
-        for key in self._data.keys():
-            for i, dim in enumerate(key):
-                if dim < minmax[i][0]:
-                    minmax[i][0] = dim
-
-                if dim > minmax[i][1]:
-                    minmax[i][1] = dim
-
-        return minmax
-    
+        data_in_use = list(self._iterate())
+        if not data_in_use:
+            return (None, None)
+        else:
+            return (
+                min(c[n_dimension] for c in self._iterate()),
+                max(c[n_dimension] for c in self._iterate())
+            )
+            
+    def occupied(self):
+        """Return the bounding box of space occupied
+        """
+        min_coord = tuple(min(c) for c in zip(*self._iterate()))
+        max_coord = tuple(max(c) for c in zip(*self._iterate()))
+        return min_coord, max_coord
     #
     # These were inherited from the previous implementation. They presumably
     # do useful things but I'm leaving them out for now.
