@@ -53,25 +53,20 @@ class Board(object):
         # NB this means that if a slice is taken of a slice, the offset must itself be offset!
         #
         self._data = {} if _global_board is None else _global_board
-        if _offset_from_global:
-            self.is_offset = True
-            self._offset_from_global = _offset_from_global
-        else:
-            self.is_offset = False
-            self._offset_from_global = 0, 0, 0
+        self._offset_from_global = _offset_from_global
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
 
-    def dumped(self, only_used=True):
-        if self.is_offset:
+    def dumped(self):
+        if self._offset_from_global:
             offset = " offset by {}".format(self._offset_from_global)
         else:
             offset = ""
         yield repr(self) + offset
         yield "{"
         for coord, value in self.iterdata():
-            if is_offset:
+            if self._offset_from_global:
                 global_coord = " => {}".format(self._to_global(coord))
             else:
                 global_coord = ""
@@ -93,13 +88,13 @@ class Board(object):
         return itertools.product(*self.dimensions)
 
     def _to_global(self, coord):
-        if self._offset_from_global is None:
+        if not self._offset_from_global:
             return tuple(coord)
         else:
             return tuple(c + o for (c, o) in zip(coord, self._offset_from_global))
 
     def _from_global(self, coord):
-        if self._offset_from_global is None:
+        if not self._offset_from_global:
             return tuple(coord)
         else:
             return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
@@ -107,23 +102,6 @@ class Board(object):
     def iterdata(self):
         """Generate the list of data in local coordinate terms.
         """
-        if False:
-            #
-            # Because we don't want to iterate infinitely over our infinite dimension,
-            # treat an infinite dimension as the bounding box of its data or, if there is
-            # not data on the board, a single [None] dimension.
-            #
-            dimensions = []
-            for n_dimension, dimension in enumerate(self.dimensions):
-                if dimension:
-                    dimensions.append(dimension)
-                else:
-                    dmin, dmax = self._occupied_dimension(n_dimension)
-                    if dmin is None: # no data on the board
-                        dimensions.append([None])
-                    else:
-                        dimensions.append(range(dmin, 1 + dmax))
-
         for gcoord, value in self._data.items():
             lcoord = self._from_global(gcoord)
             if self._is_in_bounds(lcoord):
@@ -140,9 +118,8 @@ class Board(object):
         """Clear the data which belongs to this board, possibly a sub-board
         of a larger board.
         """
-        for gcoord in list(self._data):
-            if self._is_in_bounds(self._from_global(gcoord)):
-                del self._data[coord]
+        for lcoord, value in self.iterdata():
+            del self._data[self._to_global(lcoord)]
 
     def __getitem__(self, item):
         """The item is either a tuple of numbers, representing a single

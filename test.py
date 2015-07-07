@@ -22,6 +22,7 @@ class BoardCreationTest(BoardTest):
     def test_one_infinite_dim(self):
         """Create a board with one infinite dimension
         """
+        inf = float("inf")
         b = board.Board((3, 3, None))
         self.assertEqual(len(b.dimensions[0]), 3)
         self.assertEqual(len(b.dimensions[1]), 3)
@@ -30,6 +31,7 @@ class BoardCreationTest(BoardTest):
     def test_all_infinite_dimd(self):
         """Create a board with every dimension infinite (a la Minecraft)
         """
+        inf = float("inf")
         b = board.Board((None, None, None))
         self.assertEqual(len(b.dimensions[0]), 0)
         self.assertEqual(len(b.dimensions[1]), 0)
@@ -37,7 +39,7 @@ class BoardCreationTest(BoardTest):
 
 class BoardDump(BoardTest):
     
-    def test_finite_empty_dumped_only_used(self):
+    def test_finite_empty_dumped(self):
         b = board.Board((3, 3))
         dumped = list(b.dumped())
         #
@@ -46,31 +48,28 @@ class BoardDump(BoardTest):
         #
         self.assertEquals(len(dumped), 3)
     
-    def test_finite_empty_dumped_all(self):
-        b = board.Board((3, 3))
-        dumped = list(b.dumped(only_used=False))
+    def test_infinite_empty_dumped(self):
+        b = board.Board((3, None))
+        dumped = list(b.dumped())
         #
         # For an empty board, should produce one header line,
-        # plus the curly brackets (3 rows) with one row per cell (9 rows)
+        # plus the curly brackets with no content (3 rows)
         #
-        self.assertEquals(len(dumped), 3 + 9)
+        self.assertEquals(len(dumped), 3)
 
-    def test_infinite_empty_dumped_only_used(self):
-        b = board.Board((3, None))
+    def test_finite_dumped(self):
+        b = board.Board((3, 3))
+        for x, y in b:
+            b[x, y] = x * y
         dumped = list(b.dumped())
-        #
-        # For an empty board, should produce one header line,
-        # plus the curly brackets with no content (3 rows)
-        #
-        self.assertEquals(len(dumped), 3)
+        self.assertEquals(len(dumped), 3 + 9)
     
-    def test_infinite_empty_dumped_all(self):
+    def test_infinite_dumped(self):
         b = board.Board((3, None))
-        dumped = list(b.dumped(only_used=False))
-        #
-        # For an empty board, should produce one header line,
-        # plus the curly brackets (3 rows) with one row per cell (9 rows)
-        #
+        for x in range(3):
+            for y in range(3):
+                b[x, y] = x * y
+        dumped = list(b.dumped())
         self.assertEquals(len(dumped), 3 + 9)
 
 if __name__ == '__main__':
