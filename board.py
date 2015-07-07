@@ -1,6 +1,8 @@
 import os, sys
 import itertools
 
+INFINITY = sys.maxsize
+
 class InfiniteDimension(object):
 
     def __repr__(self):
@@ -13,10 +15,18 @@ class InfiniteDimension(object):
         return True
     
     def __len__(self):
-        return 0
+        return INFINITY
     
     def __bool__(self):
         return False
+    
+    def __getitem__(self, item):
+        if item == 0:
+            return 0
+        elif item == -1:
+            return INFINITY
+        else:
+            raise IndexError("Infinite dimensions can only return first & last items")
 
 class Board(object):
     """Board - represent a board of stated dimensions,
@@ -44,7 +54,12 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
-        self.dimensions = [list(range(size)) if size else InfiniteDimension() for size in dimension_sizes]
+        self.dimensions = []
+        for size in dimension_sizes:
+            if not size or size == INFINITY:
+                self.dimensions.append(InfiniteDimension())
+            else:
+                self.dimensions.append(range(size))
 
         #
         # This can be a sub-board of another board: a slice.
@@ -56,7 +71,7 @@ class Board(object):
         self._offset_from_global = _offset_from_global
 
     def __repr__(self):
-        return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
+        return "<{} {}>".format(self.__class__.__name__, tuple(d[-1] for d in self.dimensions))
 
     def dumped(self):
         if self._offset_from_global:

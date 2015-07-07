@@ -26,16 +26,16 @@ class BoardCreationTest(BoardTest):
         b = board.Board((3, 3, None))
         self.assertEqual(len(b.dimensions[0]), 3)
         self.assertEqual(len(b.dimensions[1]), 3)
-        self.assertEqual(len(b.dimensions[2]), 0)
+        self.assertEqual(len(b.dimensions[2]), board.INFINITY)
 
     def test_all_infinite_dimd(self):
         """Create a board with every dimension infinite (a la Minecraft)
         """
         inf = float("inf")
         b = board.Board((None, None, None))
-        self.assertEqual(len(b.dimensions[0]), 0)
-        self.assertEqual(len(b.dimensions[1]), 0)
-        self.assertEqual(len(b.dimensions[2]), 0)
+        self.assertEqual(len(b.dimensions[0]), board.INFINITY)
+        self.assertEqual(len(b.dimensions[1]), board.INFINITY)
+        self.assertEqual(len(b.dimensions[2]), board.INFINITY)
 
 class BoardDump(BoardTest):
     
