@@ -1,9 +1,26 @@
 import os, sys
 import itertools
 
+class InfiniteDimension(object):
+
+    def __repr__(self):
+        return "<{}>".format(self.__class__.__name__)
+    
+    def __iter__(self):
+        return itertools.count()
+    
+    def __contains__(self, item):
+        return True
+    
+    def __len__(self):
+        return 0
+    
+    def __bool__(self):
+        return False
+
 class Board(object):
     """Board - represent a board of stated dimensions,
-    possibly infinite, possibly wrapping, but not both
+    possibly infinite.
     
     A location on the board is represented as an n-dimensional
     coordinate, matching the dimensionality originally specified.
@@ -27,7 +44,7 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
-        self.dimensions = [list(range(size or 0)) for size in dimension_sizes]
+        self.dimensions = [list(range(size)) if size else InfiniteDimension() for size in dimension_sizes]
 
         #
         # This can be a sub-board of another board: a slice.
@@ -36,21 +53,30 @@ class Board(object):
         # NB this means that if a slice is taken of a slice, the offset must itself be offset!
         #
         self._data = {} if _global_board is None else _global_board
-        self._offset_from_global = _offset_from_global or tuple(0 for _ in self.dimensions)
+        if _offset_from_global:
+            self.is_offset = True
+            self._offset_from_global = _offset_from_global
+        else:
+            self.is_offset = False
+            self._offset_from_global = 0, 0, 0
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, tuple(len(d) for d in self.dimensions))
+        return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
 
     def dumped(self, only_used=True):
-        is_offset = any(c for c in self._offset_from_global)
-        yield repr(self)
+        if self.is_offset:
+            offset = " offset by {}".format(self._offset_from_global)
+        else:
+            offset = ""
+        yield repr(self) + offset
         yield "{"
-        for coord in self._iterate(only_used=only_used):
+        for coord, value in self.iterdata():
             if is_offset:
-                global_coord = " => %s" % (self._to_global(coord),)
+                global_coord = " => {}".format(self._to_global(coord))
             else:
                 global_coord = ""
-            yield "  %s%s [%s]" % (coord, global_coord, self[coord])
+            data = " [{}]".format(self[coord] if self[coord] is not None else "")
+            yield "  {}{}{}".format(coord, global_coord, data)
         yield "}"
     
     def dump(self, outf=sys.stdout):
@@ -58,66 +84,65 @@ class Board(object):
             outf.write(line + "\n")
         
     def _is_in_bounds(self, coord):
-        return all(not d or c in d for (c, d) in zip(coord, self.dimensions))
+        return all(c in d for (c, d) in zip(coord, self.dimensions))
     
     def __contains__(self, coord):
         return self._is_in_bounds(coord)
 
     def __iter__(self):
-        return itertools.product(*(d if d else itertools.count() for d in self.dimensions))
+        return itertools.product(*self.dimensions)
 
     def _to_global(self, coord):
-        return tuple(c + o for (c, o) in zip(coord, self._offset_from_global))
+        if self._offset_from_global is None:
+            return tuple(coord)
+        else:
+            return tuple(c + o for (c, o) in zip(coord, self._offset_from_global))
 
     def _from_global(self, coord):
-        return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
+        if self._offset_from_global is None:
+            return tuple(coord)
+        else:
+            return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
 
-    def _iterate(self, only_used=True):
-        """Generate the list of local coordinates. If one or more dimensions
-        is infinite, only the bounding box of used coordinates will be 
-        produced.
+    def iterdata(self):
+        """Generate the list of data in local coordinate terms.
         """
-        #
-        # Because we don't want to iterate infinitely over our infinite dimension,
-        # treat an infinite dimension as the bounding box of its data or, if there is
-        # not data on the board, a single [None] dimension.
-        #
-        dimensions = []
-        for n_dimension, dimension in enumerate(self.dimensions):
-            if not dimension:
-                dmin, dmax = self._occupied_dimension(n_dimension)
-                if dmin is None: # no data on the board
-                    dimension.append([None])
+        if False:
+            #
+            # Because we don't want to iterate infinitely over our infinite dimension,
+            # treat an infinite dimension as the bounding box of its data or, if there is
+            # not data on the board, a single [None] dimension.
+            #
+            dimensions = []
+            for n_dimension, dimension in enumerate(self.dimensions):
+                if dimension:
+                    dimensions.append(dimension)
                 else:
-                    dimensions.append(range(dmin, 1 + dmax))
+                    dmin, dmax = self._occupied_dimension(n_dimension)
+                    if dmin is None: # no data on the board
+                        dimensions.append([None])
+                    else:
+                        dimensions.append(range(dmin, 1 + dmax))
 
-        for lcoord in itertools.product(*(d if d else itertools.count() for d in dimensions)):
-            if only_used:
-                if self._is_in_bounds(lcoord):
-                    yield lcoord
-            else:
-                yield lcoord
-
-    def _iterate_g(self, only_used=True):
-        """Generate the list of global coordinates which fit inside our space, 
-        optionally limiting to those which have some data attached.
-        """
-        for coord in self._iterate(only_used=only_used):
-            yield self._to_global(coord)
+        for gcoord, value in self._data.items():
+            lcoord = self._from_global(gcoord)
+            if self._is_in_bounds(lcoord):
+                yield lcoord, value
 
     def copy(self, with_data=True):
         board = self.__class__(tuple(len(d) for d in self.dimensions))
         if with_data:
-            for coord in self._iterate():
-                board._data[coord] = self._data[coord]
+            for coord, value in self.iterdata():
+                board._data[coord] = value
         return board
 
     def clear(self):
         """Clear the data which belongs to this board, possibly a sub-board
         of a larger board.
         """
-        for coord in list(self._iterate_g(only_used=True)):
-            del self._data[coord]
+        for gcoord in list(self._data):
+            if self._is_in_bounds(self._from_global(gcoord)):
+                del self._data[coord]
 
     def __getitem__(self, item):
         """The item is either a tuple of numbers, representing a single
@@ -147,14 +172,22 @@ class Board(object):
         global coordinate.
         """
         if len(coord) != len(self.dimensions):
-            raise IndexError("Coordinate %s has %d dimensions; the board has %d" % (coord, len(coord), len(self.dimensions)))
+            raise IndexError("Coordinate {} has {} dimensions; the board has {}".format(coord, len(coord), len(self.dimensions)))
 
         #
-        # Account for negative indices in the usual way
+        # Account for negative indices in the usual way, allowing
+        # for the fact that you can't use negative indices if the
+        # dimension is infinite
         #
-        coord = [len(d) + c if c < 0 else c for c, d in zip(coord, self.dimensions)]
+        normalised_coord = []
+        for c, d in zip(coord, self.dimensions):
+            if c < 0 and not d:
+                raise IndexError("Cannot use negative index {} on an infinite dimension".format(c))
+            else:
+                normalised_coord.append(len(d) + c if c < 0 else c)
+        
         if not self._is_in_bounds(coord):
-            raise IndexError("Coordinate %s is out-of-bounds" % (coord,))
+            raise IndexError("Coordinate {} is out-of-bounds".format(coord))
 
         return self._to_global(coord)
 
@@ -163,40 +196,41 @@ class Board(object):
         linked to the same underlying data.
         """
         if len(slices) != len(self.dimensions):
-            raise IndexError("Slices %s have %d dimensions; the board has %d" % (slices, len(slices), len(self.dimensions)))
+            raise IndexError("Slices {} have {} dimensions; the board has {}".format(slices, len(slices), len(self.dimensions)))
 
         #
         # Determine the start/stop/step for all the slices
         #
         slice_indices = [slice.indices(len(dimension)) for (slice, dimension) in zip(slices, self.dimensions)]
         if any(abs(step) != 1 for start, stop, step in slice_indices):
-            raise IndexError("At least one of slices %s has a stride other than 1" % slices)
+            raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
         sizes = tuple(stop - start for start, stop, step in slice_indices)
         #
         # Need to take into account the offset of this board, which might
         # itself be offset from the parent board.
         #
-        offset = tuple(o + start for (o, (start, stop, step)) in zip(self._offset_from_global, slice_indices))
+        _offset_from_global = self._offset_from_global or tuple(0 for _ in self.dimensions)
+        offset = tuple(o + start for (o, (start, stop, step)) in zip(_offset_from_global, slice_indices))
         return self.__class__(sizes, self._data, offset)
 
     def _occupied_dimension(self, n_dimension):
         """Return the min/max along a particular dimension.
         (Intended for internal use, eg when displaying an infinite dimension)
         """
-        data_in_use = list(self._iterate())
+        data_in_use = [coord for coord in self._data if coord in self]
         if not data_in_use:
             return (None, None)
         else:
             return (
-                min(c[n_dimension] for c in self._iterate()),
-                max(c[n_dimension] for c in self._iterate())
+                min(c[n_dimension] for c in data_in_use),
+                max(c[n_dimension] for c in data_in_use)
             )
             
     def occupied(self):
         """Return the bounding box of space occupied
         """
-        min_coord = tuple(min(c) for c in zip(*self._iterate()))
-        max_coord = tuple(max(c) for c in zip(*self._iterate()))
+        min_coord = tuple(min(coord) for coord, value in zip(*self.iterdata()))
+        max_coord = tuple(max(coord) for coord, value in zip(*self.iterdata()))
         return min_coord, max_coord
     #
     # These were inherited from the previous implementation. They presumably
