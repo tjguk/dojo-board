@@ -1,7 +1,18 @@
 import os, sys
 import itertools
 
-INFINITY = sys.maxsize
+class _Infinity(object):
+    
+    def __repr__(self):
+        return "Infinity"
+    
+    def __eq__(self, other):
+        return other == sys.maxsize
+    
+    def __hash__(self):
+        return hash(sys.maxsize)
+
+Infinity = _Infinity()
 
 class InfiniteDimension(object):
     
@@ -15,7 +26,7 @@ class InfiniteDimension(object):
         return True
     
     def __len__(self):
-        return INFINITY
+        return sys.maxsize
     
     def __bool__(self):
         return False
@@ -25,7 +36,7 @@ class InfiniteDimension(object):
             if item == 0:
                 return 0
             elif item == -1:
-                return INFINITY
+                return Infinity
             else:
                 raise IndexError("Infinite dimensions can only return first & last items")
         elif isinstance(item, slice):
@@ -33,7 +44,6 @@ class InfiniteDimension(object):
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
             
-
 class Board(object):
     """Board - represent a board of stated dimensions, possibly infinite.
     
@@ -61,12 +71,7 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
-        self.dimensions = []
-        for size in dimension_sizes:
-            if not size or size == INFINITY:
-                self.dimensions.append(InfiniteDimension())
-            else:
-                self.dimensions.append(range(size))
+        self.dimensions = [InfiniteDimension() if size is Infinity else range(size) for size in dimension_sizes]
 
         #
         # This can be a sub-board of another board: a slice.
@@ -117,10 +122,10 @@ class Board(object):
         up the axes for its Cartesian join. Instead, we chunk through
         any infinite dimensions, while repeating the finite ones.
         """
-        if any(d[-1] == INFINITY for d in self.dimensions):        
+        if any(d[-1] is Infinity for d in self.dimensions):        
             start, chunk = 0, self.INFINITE_CHUNK_SIZE
             while True:
-                iterators = [d[start:start+chunk] if d[-1] == INFINITY else iter(d) for d in self.dimensions]
+                iterators = [d[start:start+chunk] if d[-1] is Infinity else iter(d) for d in self.dimensions]
                 for coord in itertools.product(*iterators):
                     yield coord
                 start += chunk
