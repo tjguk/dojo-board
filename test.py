@@ -72,5 +72,50 @@ class BoardDump(BoardTest):
         dumped = list(b.dumped())
         self.assertEquals(len(dumped), 3 + 9)
 
+class BoardContains(BoardTest):
+    
+    def setUp(self):
+        self.board = board.Board((3, 3))
+    
+    def test_contains(self):
+        self.assertTrue((0, 0) in self.board)
+    
+    def test_does_not_contain(self):
+        self.assertFalse((3, 3) in self.board)
+    
+    def test_contains_infinite(self):
+        self.assertTrue((0, 10) in board.Board((3, None)))
+
+    def test_does_not_contain_infinite(self):
+        self.assertFalse((3, 10) in board.Board((3, None)))
+
+class BoardIteration(BoardTest):
+    
+    def test_iteration(self):
+        b = board.Board((2, 2))
+        self.assertEquals(list(b), [(0, 0), (0, 1), (1, 0), (1, 1)])
+
+    def test_iteration_one_infinite(self):
+        """Iterate over a board with one finite and one infinite dimension
+        
+        The infinite dimensions iterate in chunks of 10
+        """
+        b = board.Board((2, None))
+        i = iter(b)
+        for x in range(2):
+            for y in range(10):
+                self.assertEquals((x, y), next(i))
+
+    def test_iteration_all_infinite(self):
+        """Iterate over a board with all dimensions infinite
+        
+        The infinite dimensions iterate in chunks of 10
+        """
+        b = board.Board((None, None))
+        i = iter(b)
+        for x in range(2):
+            for y in range(10):
+                self.assertEquals((x, y), next(i))
+
 if __name__ == '__main__':
     unittest.main()

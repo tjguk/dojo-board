@@ -4,7 +4,7 @@ import itertools
 INFINITY = sys.maxsize
 
 class InfiniteDimension(object):
-
+    
     def __repr__(self):
         return "<{}>".format(self.__class__.__name__)
     
@@ -21,16 +21,21 @@ class InfiniteDimension(object):
         return False
     
     def __getitem__(self, item):
-        if item == 0:
-            return 0
-        elif item == -1:
-            return INFINITY
+        if isinstance(item, int):
+            if item == 0:
+                return 0
+            elif item == -1:
+                return INFINITY
+            else:
+                raise IndexError("Infinite dimensions can only return first & last items")
+        elif isinstance(item, slice):
+            return range(*item.indices(item.stop))
         else:
-            raise IndexError("Infinite dimensions can only return first & last items")
+            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
+            
 
 class Board(object):
-    """Board - represent a board of stated dimensions,
-    possibly infinite.
+    """Board - represent a board of stated dimensions, possibly infinite.
     
     A location on the board is represented as an n-dimensional
     coordinate, matching the dimensionality originally specified.
@@ -48,6 +53,8 @@ class Board(object):
     class BoardError(BaseException): pass
     class InvalidDimensionsError(BoardError): pass
     class OutOfBoundsError(BoardError): pass
+    
+    INFINITE_CHUNK_SIZE = 10
     
     def __init__(self, dimension_sizes, _global_board=None, _offset_from_global=None):
         """Set up a n-dimensional board
@@ -100,7 +107,26 @@ class Board(object):
         return self._is_in_bounds(coord)
 
     def __iter__(self):
-        return itertools.product(*self.dimensions)
+        """Iterator over all combinations of coordinates.
+        
+        If all the dimensions are finite (the simplest and most common
+        situation) just use itertools.product.
+        
+        If any dimension is infinite, we can't use itertools.product
+        directly because it consumes its arguments in order to make
+        up the axes for its Cartesian join. Instead, we chunk through
+        any infinite dimensions, while repeating the finite ones.
+        """
+        if any(d[-1] == INFINITY for d in self.dimensions):        
+            start, chunk = 0, self.INFINITE_CHUNK_SIZE
+            while True:
+                iterators = [d[start:start+chunk] if d[-1] == INFINITY else iter(d) for d in self.dimensions]
+                for coord in itertools.product(*iterators):
+                    yield coord
+                start += chunk
+        else:
+            for coord in itertools.product(*self.dimensions):
+                yield coord
 
     def _to_global(self, coord):
         if not self._offset_from_global:
@@ -144,8 +170,10 @@ class Board(object):
         if all(isinstance(i, int) for i in item):
             coord = self._normalised_coord(item)
             return self._data.get(coord)
-        else:
+        elif all(isinstance(i, (int, slice)) for i in item):
             return self._slice(item)
+        else:
+            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name))
     
     def __setitem__(self, coord, value):
         coord = self._normalised_coord(coord)
