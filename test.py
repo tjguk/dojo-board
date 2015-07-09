@@ -1,3 +1,4 @@
+#!python3
 import unittest
 from board import Board, Infinity
 
@@ -226,5 +227,52 @@ class BoardItemAccess(BoardTest):
         b2[0, 0] = obj
         self.assertIs(self.b[0, 0], obj)
 
+class BoardOffset(BoardTest):
+    
+    def test_simple_copy(self):
+        b = self.b
+        b2 = b[:, :]
+        self.assertEqual(b.dimensions, b2.dimensions)
+        #
+        # Check that a change to b2 changes b
+        #
+        obj = object()
+        b2[0, 0] = obj
+        self.assertIs(self.b[0, 0], obj)
+    
+    def test_short_from_origin(self):
+        b = self.b
+        b2 = b[:-1, :-1]
+        self.assertEqual([d[:-1] for d in b.dimensions], b2.dimensions)
+        #
+        # Check that a change to b2 changes b
+        #
+        obj = object()
+        b2[0, 0] = obj
+        self.assertIs(b[0, 0], obj)
+
+    def test_from_offset(self):
+        b = self.b
+        b2 = b[1:, 1:]
+        self.assertEqual([len(d[1:]) for d in b.dimensions], [len(d) for d in b2.dimensions])
+        #
+        # Check that a change to b2 changes b
+        #
+        obj = object()
+        b2[0, 0] = obj
+        self.assertIs(b[1, 1], obj)
+    
+    def test_from_offset_infinite(self):
+        b = Board((3, Infinity))
+        b2 = b[1:, 1:]
+        self.assertEqual(len(b2.dimensions[0]), len(b.dimensions[0]) - 1)
+        self.assertEqual(len(b2.dimensions[1]), Infinity)
+        #
+        # Check that a change to b2 changes b
+        #
+        obj = object()
+        b2[0, 0] = obj
+        self.assertIs(b[1, 1], obj)
+        
 if __name__ == '__main__':
     unittest.main()

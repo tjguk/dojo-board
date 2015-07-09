@@ -1,17 +1,31 @@
+# -*- coding: utf-8 -*-
 import os, sys
 import itertools
 
 class _Infinity(object):
     
-    def __repr__(self):
-        return "Infinity"
+    #~ def __new__(meta, *args, **kwargs):
+        #~ return int.__new__(meta, sys.maxsize)
     
-    def __eq__(self, other):
-        return other == sys.maxsize
+    def __repr__(self):
+        return "<{}>".format(self)
+    
+    def __str__(self):
+        return "Infinity"
+        #~ return "∞" ## Windows can't display this on the console!
     
     def __hash__(self):
         return hash(sys.maxsize)
-
+    
+    def __eq__(self, other):
+        return isinstance(other, _Infinity)
+    
+    def __gt__(self, other):
+        return True
+    
+    def __lt__(self, other):
+        return False
+        
 Infinity = _Infinity()
 
 class InfiniteDimension(object):
@@ -26,7 +40,8 @@ class InfiniteDimension(object):
         return True
     
     def __len__(self):
-        return sys.maxsize
+        print("Returning Infinity")
+        return Infinity
     
     def __bool__(self):
         return False
@@ -40,7 +55,16 @@ class InfiniteDimension(object):
             else:
                 raise IndexError("Infinite dimensions can only return first & last items")
         elif isinstance(item, slice):
-            return range(*item.indices(item.stop))
+            print("Looking at a slice: %s" % item)
+            #
+            # If the request is for an open-ended slice,
+            # just return the same infinite dimension.
+            #
+            print("stop = %r" % item.stop)
+            if item.stop is None:
+                return self
+            else:
+                return range(*item.indices(item.stop))
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
             
@@ -83,7 +107,7 @@ class Board(object):
         self._offset_from_global = _offset_from_global
 
     def __repr__(self):
-        return "<{} {}>".format(self.__class__.__name__, tuple(d[-1] for d in self.dimensions))
+        return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
 
     def dumped(self):
         if self._offset_from_global:
@@ -164,7 +188,7 @@ class Board(object):
         """Clear the data which belongs to this board, possibly a sub-board
         of a larger board.
         """
-        for lcoord, value in self.iterdata():
+        for lcoord, value in list(self.iterdata()):
             del self._data[self._to_global(lcoord)]
 
     def __getitem__(self, item):
@@ -220,6 +244,7 @@ class Board(object):
         """Produce a subset of this board, possibly of fewer dimensions,
         linked to the same underlying data.
         """
+        print("slices:", slices)
         if len(slices) != len(self.dimensions):
             raise IndexError("Slices {} have {} dimensions; the board has {}".format(slices, len(slices), len(self.dimensions)))
 
@@ -227,9 +252,23 @@ class Board(object):
         # Determine the start/stop/step for all the slices
         #
         slice_indices = [slice.indices(len(dimension)) for (slice, dimension) in zip(slices, self.dimensions)]
+        print("slice indices:", slice_indices)
         if any(abs(step) != 1 for start, stop, step in slice_indices):
             raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
-        sizes = tuple(stop - start for start, stop, step in slice_indices)
+        
+        _sizes = []
+        for (start, stop, step), dimension in zip(slice_indices, self.dimensions):
+            print(start, stop, step)
+            print(dimension)
+            if len(dimension) is Infinity:
+                print("-->Infinite")
+                _sizes.append(Infinity)
+            else:
+                _sizes.append(stop - start)
+        print(_sizes)
+        sizes = tuple(_sizes)
+        #~ sizes = tuple(Infinity if len(d) is Infinity else (stop - start) for (start, stop, step), d in zip(slice_indices, self.dimensions))
+        print("sizes:", sizes)
         #
         # Need to take into account the offset of this board, which might
         # itself be offset from the parent board.
