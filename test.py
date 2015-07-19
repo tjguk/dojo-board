@@ -1,6 +1,6 @@
 #!python3
 import unittest
-from board import Board, Infinity
+from board import Board, Infinity, Empty
 
 class BoardTest(unittest.TestCase):
     
@@ -216,13 +216,16 @@ class BoardItemAccess(BoardTest):
     def test_getitem_value(self):
         self.assertEqual(self.b[0, 0], 0)
     
+    def test_getitem_no_value(self):
+        self.assertIs(self.b[0, 1], Empty)
+    
     def test_setitem_value(self):
         self.b[0, 1] = "Value"
         self.assertEqual(self.b[0, 1], "Value")
     
     def test_delitem_value(self):
         del self.b[0, 0]
-        self.assertEqual(self.b[0, 0], None)
+        self.assertIs(self.b[0, 0], Empty)
     
     def test_out_of_bounds(self):
         with self.assertRaises(IndexError):

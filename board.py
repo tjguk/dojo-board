@@ -4,6 +4,16 @@ import itertools
 
 Infinity = sys.maxsize
 
+class _Empty(object):
+
+    def __repr__(self):
+        return "<Empty>"
+        
+    def __bool__(self):
+        return False
+    
+Empty = _Empty()
+
 class InfiniteDimension(object):
     
     def __repr__(self):
@@ -171,7 +181,7 @@ class Board(object):
         """
         if all(isinstance(i, int) for i in item):
             coord = self._normalised_coord(item)
-            return self._data.get(coord)
+            return self._data.get(coord, Empty)
         elif all(isinstance(i, (int, slice)) for i in item):
             return self._slice(item)
         else:
