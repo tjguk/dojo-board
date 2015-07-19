@@ -78,6 +78,10 @@ class BoardDump(BoardTest):
         self.assertEqual(len(dumped), 3 + 9)
 
 class BoardContains(BoardTest):
+    """A coordinate is considered to be "in" a board if
+    it's within the bounds of the *local* coordinates. It
+    doesn't matter whether it contains data or not.
+    """
     
     def setUp(self):
         self.board = Board((3, 3))
@@ -95,6 +99,14 @@ class BoardContains(BoardTest):
         self.assertFalse((3, 10) in Board((3, Infinity)))
 
 class BoardIteration(BoardTest):
+    """A board iterates coordinates across all its dimensions in 
+    an underspecified order. Particularly, any infinite dimension
+    results in chunks of 10 coordinates, each time restarting any
+    non-infinite dimensions.
+    
+    The .iterdata method yield the coordinate and its value for each
+    coordinate in the local space which has a value.
+    """
     
     def test_iteration(self):
         b = Board((2, 2))
@@ -133,6 +145,12 @@ class BoardIteration(BoardTest):
         self.assertEqual(set(b.iterdata()), set(results))
     
 class BoardCopy(BoardTest):
+    """Copying a board can result in a new board, or a subboard
+    linked to the original. The former is achieved by the .copy
+    command, the latter by slicing the original (similar to pulling
+    out the data at a specific coordinate, but using a slice notation
+    instead).
+    """
 
     def test_copy_without_data(self):
         b2 = self.b.copy(with_data=False)
@@ -169,6 +187,10 @@ class BoardCopy(BoardTest):
         self.assertIs(self.b[0, 0], obj)
 
 class BoardClear(BoardTest):
+    """Clearing the board removes all the data visible to the local board.
+    That is, if this is a subboard of some larger board, only those items
+    which fall within the local coordinate space are removed; 
+    """
     
     def test_clear(self):
         self.b.clear()
@@ -228,6 +250,9 @@ class BoardItemAccess(BoardTest):
         self.assertIs(self.b[0, 0], obj)
 
 class BoardOffset(BoardTest):
+    """A board slice can result in a subboard offset from the main board
+    at one or both ends of each dimension.
+    """
     
     def test_simple_copy(self):
         b = self.b

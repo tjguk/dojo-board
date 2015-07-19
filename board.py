@@ -2,31 +2,7 @@
 import os, sys
 import itertools
 
-class _Infinity(object):
-    
-    #~ def __new__(meta, *args, **kwargs):
-        #~ return int.__new__(meta, sys.maxsize)
-    
-    def __repr__(self):
-        return "<{}>".format(self)
-    
-    def __str__(self):
-        return "Infinity"
-        #~ return "∞" ## Windows can't display this on the console!
-    
-    def __hash__(self):
-        return hash(sys.maxsize)
-    
-    def __eq__(self, other):
-        return isinstance(other, _Infinity)
-    
-    def __gt__(self, other):
-        return True
-    
-    def __lt__(self, other):
-        return False
-        
-Infinity = _Infinity()
+Infinity = sys.maxsize
 
 class InfiniteDimension(object):
     
@@ -40,7 +16,6 @@ class InfiniteDimension(object):
         return True
     
     def __len__(self):
-        print("Returning Infinity")
         return Infinity
     
     def __bool__(self):
@@ -55,12 +30,10 @@ class InfiniteDimension(object):
             else:
                 raise IndexError("Infinite dimensions can only return first & last items")
         elif isinstance(item, slice):
-            print("Looking at a slice: %s" % item)
             #
             # If the request is for an open-ended slice,
             # just return the same infinite dimension.
             #
-            print("stop = %r" % item.stop)
             if item.stop is None:
                 return self
             else:
@@ -95,7 +68,7 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
-        self.dimensions = [InfiniteDimension() if size is Infinity else range(size) for size in dimension_sizes]
+        self.dimensions = [InfiniteDimension() if size == Infinity else range(size) for size in dimension_sizes]
 
         #
         # This can be a sub-board of another board: a slice.
@@ -146,10 +119,10 @@ class Board(object):
         up the axes for its Cartesian join. Instead, we chunk through
         any infinite dimensions, while repeating the finite ones.
         """
-        if any(d[-1] is Infinity for d in self.dimensions):        
+        if any(d[-1] == Infinity for d in self.dimensions):        
             start, chunk = 0, self.INFINITE_CHUNK_SIZE
             while True:
-                iterators = [d[start:start+chunk] if d[-1] is Infinity else iter(d) for d in self.dimensions]
+                iterators = [d[start:start+chunk] if d[-1] == Infinity else iter(d) for d in self.dimensions]
                 for coord in itertools.product(*iterators):
                     yield coord
                 start += chunk
@@ -244,7 +217,6 @@ class Board(object):
         """Produce a subset of this board, possibly of fewer dimensions,
         linked to the same underlying data.
         """
-        print("slices:", slices)
         if len(slices) != len(self.dimensions):
             raise IndexError("Slices {} have {} dimensions; the board has {}".format(slices, len(slices), len(self.dimensions)))
 
@@ -252,23 +224,17 @@ class Board(object):
         # Determine the start/stop/step for all the slices
         #
         slice_indices = [slice.indices(len(dimension)) for (slice, dimension) in zip(slices, self.dimensions)]
-        print("slice indices:", slice_indices)
         if any(abs(step) != 1 for start, stop, step in slice_indices):
             raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
         
         _sizes = []
         for (start, stop, step), dimension in zip(slice_indices, self.dimensions):
-            print(start, stop, step)
-            print(dimension)
-            if len(dimension) is Infinity:
-                print("-->Infinite")
+            if len(dimension) == Infinity:
                 _sizes.append(Infinity)
             else:
                 _sizes.append(stop - start)
-        print(_sizes)
         sizes = tuple(_sizes)
         #~ sizes = tuple(Infinity if len(d) is Infinity else (stop - start) for (start, stop, step), d in zip(slice_indices, self.dimensions))
-        print("sizes:", sizes)
         #
         # Need to take into account the offset of this board, which might
         # itself be offset from the parent board.
