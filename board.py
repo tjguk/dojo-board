@@ -14,6 +14,8 @@ class _Empty(object):
     
 Empty = _Empty()
 
+Default = object()
+
 class InfiniteDimension(object):
     
     def __repr__(self):
@@ -39,6 +41,7 @@ class InfiniteDimension(object):
                 return Infinity
             else:
                 raise IndexError("Infinite dimensions can only return first & last items")
+        
         elif isinstance(item, slice):
             #
             # If the request is for an open-ended slice,
@@ -48,6 +51,7 @@ class InfiniteDimension(object):
                 return self
             else:
                 return range(*item.indices(item.stop))
+        
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
             
@@ -219,7 +223,7 @@ class Board(object):
                 normalised_coord.append(len(d) + c if c < 0 else c)
         
         if not self._is_in_bounds(coord):
-            raise IndexError("Coordinate {} is out-of-bounds".format(coord))
+            raise IndexError("Coordinate {} is out-of-bounds on board {!r}".format(coord, self))
 
         return self._to_global(coord)
 
@@ -272,26 +276,29 @@ class Board(object):
         min_coord = tuple(min(coord) for coord, value in zip(*self.iterdata()))
         max_coord = tuple(max(coord) for coord, value in zip(*self.iterdata()))
         return min_coord, max_coord
-    #
-    # These were inherited from the previous implementation. They presumably
-    # do useful things but I'm leaving them out for now.
-    #
-    if 0:
+    
+    def neighbours(self, coord):
+        """For a given coordinate, yield each of its nearest
+        neighbours along all dimensions, mapping each coordinate to
+        its value.
+        """
+        gcoord = self._normalised_coord(coord)
 
-        def neighbours(self, coord):
-            """For a given coordinate, return a dictionary of its nearest
-            neighbours along all coordinates, mapping each coordinate to
-            its value.
-            """
-            coord = self._normalised_coord(coord)
-
-            mins = [x - 1 for x in coord]
-            maxs = [x + 1 for x in coord]
-
-            coords = set(c for c in itertools.product(*zip(mins, coord, maxs)) if self._is_in_bounds(c))
-            coords.remove(coord)
-
-            return dict((c, self[c]) for c in coords)
+        #
+        # Find the bounding box for all coordinates surrounding coord.
+        # Then produce every coordinate in that space, selecting only
+        # those which fall onto the local board.
+        #
+        mins = [x - 1 for x in coord]
+        maxs = [x + 1 for x in coord]
+        gcoords = set(c for c in itertools.product(*zip(mins, gcoord, maxs)) if self._is_in_bounds(c))
+        #
+        # ... and remove the coordinate itself
+        #
+        gcoords.remove(coord)
+        
+        for g in gcoords:
+            yield self._from_global(gcoord), self._data.get(gcoord, Empty)
 
 if __name__ == '__main__':
     pass
