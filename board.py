@@ -2,6 +2,8 @@
 import os, sys
 import itertools
 
+Default = object()
+
 Infinity = sys.maxsize
 
 class _Empty(object):
@@ -13,8 +15,6 @@ class _Empty(object):
         return False
     
 Empty = _Empty()
-
-Default = object()
 
 class InfiniteDimension(object):
     
@@ -65,10 +65,7 @@ class Board(object):
     
     b = Board((4, 4))
     b[2, 2] = "*"
-    print(b[2, 2])
-    
-    NB All public methods take a local coordinate, including the implicit
-    dunder methods; all other methods are assumed local unless suffixed with _g
+    print(b[2, 2])    
     """
     
     class BoardError(BaseException): pass
@@ -163,6 +160,54 @@ class Board(object):
             lcoord = self._from_global(gcoord)
             if self._is_in_bounds(lcoord):
                 yield lcoord, value
+
+    def iterline(self, coord1, coord2, extend=False):
+        """Generate all the coordinates in a line which pass through
+        coord1 and coord2, optionally extending in both directions.
+        """
+        for coord in coord1, coord2:
+            if not self._is_in_bounds(coord):
+                raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
+        
+        x1, y1 = coord1
+        x2, y2 = coord2
+        #
+        # If the line is vertical, extend it if required in both directions
+        # and yield all the coordinates in between
+        #
+        if x1 == x2:
+            if extend:
+                y = min(y1, y2) - 1
+                while self._is_in_bounds(x1, y):
+                    yield x1, y
+                    y -= 1
+            for y in range(y1, y2 + 1):
+                yield x1, y
+            if extend:
+                y = max(y1, y2) + 1
+                while self._is_in_bounds(x1, y):
+                    yield x1, y
+                    y += 1
+        #
+        # ... otherwise determine the function for y = mx + c
+        # and yield every coordinate
+        #
+        else:
+            m = (y2 - y1) / (x2 - x1)
+            c = y1 - (m * x1)
+            y = lambda x: m * x + c
+            if extend:
+                x = min(x1, x2) - 1
+                while self._is_in_bounds(x, y1):
+                    yield x, round(y(x))
+                    x -= 1
+            for x in range(x1, x2 + 1):
+                yield x, round(y(x))
+            if extend:
+                x = max(x1, x2) + 1
+                while self._is_in_bounds(x, y1):
+                    yield x, round(y(x))
+                    x += 1
 
     def copy(self, with_data=True):
         board = self.__class__(tuple(len(d) for d in self.dimensions))
@@ -299,6 +344,6 @@ class Board(object):
         
         for g in gcoords:
             yield self._from_global(gcoord), self._data.get(gcoord, Empty)
-
+    
 if __name__ == '__main__':
     pass
