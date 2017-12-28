@@ -180,6 +180,8 @@ class Board(object):
         """Generate all the coordinates in a line which pass through
         coord1 and coord2, optionally extending in both directions.
         """
+        if coord1 == coord2:
+            raise ValueError("Distinct coordinates must be supplied for line iteration")
         for coord in coord1, coord2:
             if not self._is_in_bounds(coord):
                 raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
@@ -339,8 +341,9 @@ class Board(object):
     def occupied(self):
         """Return the bounding box of space occupied
         """
-        min_coord = tuple(min(coord) for coord, value in zip(*self.iterdata()))
-        max_coord = tuple(max(coord) for coord, value in zip(*self.iterdata()))
+        coords_in_use = [coord for coord, _ in self.iterdata()]
+        min_coord = tuple(min(coord) for coord in zip(*coords_in_use))
+        max_coord = tuple(max(coord) for coord in zip(*coords_in_use))
         return min_coord, max_coord
 
     def itercoords(self, coord1, coord2):

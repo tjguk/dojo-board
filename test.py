@@ -413,13 +413,13 @@ class BoardOccupied(BoardTest):
         self.assertEqual(b.occupied(), expected)
 
     def test_square(self):
-        raise NotImplementedError
         b = Board((3, 3))
         min_coord = (0, 0)
         max_coord = (1, 1)
 
         expected = min_coord, max_coord
         b[min_coord] = "*"
+        b[max_coord] = "*"
         self.assertEqual(b.occupied(), expected)
 
 if __name__ == '__main__':
