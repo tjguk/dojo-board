@@ -93,6 +93,13 @@ Iterating over the board yields its coordinates::
     # => (0, 0), (0, 1) etc.
     #
 
+Iteration over a board with one or more infinite dimensions will work
+by iterating in chunks::
+
+    b1 = board.Board((3, 3, board.Infinity))
+    for coord in b1:
+        print(b1)
+
 To see coordinates with their data items, use iterdata::
 
     b1 = board.Board((2, 2))
@@ -100,7 +107,8 @@ To see coordinates with their data items, use iterdata::
     for coord, data in b1.iterdata():
         print(coord, "=>", data)
 
-__getitem__, __setitem__ & __delitem__ all work as you would expect::
+
+To read, write and empty the data at a board position, use indexing::
 
     b1 = board.Board((3, 3))
     b1.populate("abcdef")
@@ -112,8 +120,39 @@ __getitem__, __setitem__ & __delitem__ all work as you would expect::
     del b1[0, 0]
     print(b1[0, 0]) # <Empty>
 
-__contains__
+To test whether a coordinate is contained with the local coordinate space, use in::
 
     b1 = board.Board((3, 3))
     (1, 1) in b1 # True
     (4, 4) in b1 # False
+    (1, 1, 1) in b1 # InvalidDimensionsError
+
+One board is equal to another if it has the same dimensionality and
+each data item is equal::
+
+    b1 = board.Board((3, 3))
+    b1.populate("abcdef")
+    b2 = b1.copy()
+    b1 == b2 # True
+    b2[0, 0] = "*"
+    b1 == b2 # False
+
+    b2 = board.Board((2, 2))
+    b2.populate("abcdef")
+    b1 == b2 # False
+
+To get a crude view of the contents of the board, use .dump::
+
+    b1 = board.Board((3, 3))
+    b1.populate("abcdef")
+    b1.dump()
+
+To populate the board from an arbitrary iterator, use .populate::
+
+    def random_letters():
+        import random, string
+        while True:
+            yield random.choice(string.ascii_uppercase)
+
+    b1 = board.Board((4, 4))
+    b1.populate(random_letters())
