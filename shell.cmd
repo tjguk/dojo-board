@@ -1,1 +1,3 @@
-py -3 -i -c "import board; B = board.Board; b = B((4, 4))"
+python -i shell-init.py
+
+REM -c "import board; B = board.Board; b = B((4, 4))"

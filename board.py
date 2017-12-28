@@ -10,29 +10,29 @@ class _Empty(object):
 
     def __repr__(self):
         return "<Empty>"
-        
+
     def __bool__(self):
         return False
-    
+
 Empty = _Empty()
 
 class InfiniteDimension(object):
-    
+
     def __repr__(self):
         return "<{}>".format(self.__class__.__name__)
-    
+
     def __iter__(self):
         return itertools.count()
-    
+
     def __contains__(self, item):
         return True
-    
+
     def __len__(self):
         return Infinity
-    
+
     def __bool__(self):
         return False
-    
+
     def __getitem__(self, item):
         if isinstance(item, int):
             if item == 0:
@@ -41,7 +41,7 @@ class InfiniteDimension(object):
                 return Infinity
             else:
                 raise IndexError("Infinite dimensions can only return first & last items")
-        
+
         elif isinstance(item, slice):
             #
             # If the request is for an open-ended slice,
@@ -51,29 +51,29 @@ class InfiniteDimension(object):
                 return self
             else:
                 return range(*item.indices(item.stop))
-        
+
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
-            
+
 class Board(object):
     """Board - represent a board of stated dimensions, possibly infinite.
-    
+
     A location on the board is represented as an n-dimensional
     coordinate, matching the dimensionality originally specified.
-    
+
     The board is addressed by index with a coordinate:
-    
+
     b = Board((4, 4))
     b[2, 2] = "*"
-    print(b[2, 2])    
+    print(b[2, 2])
     """
-    
+
     class BoardError(BaseException): pass
     class InvalidDimensionsError(BoardError): pass
     class OutOfBoundsError(BoardError): pass
-    
+
     INFINITE_CHUNK_SIZE = 10
-    
+
     def __init__(self, dimension_sizes, _global_board=None, _offset_from_global=None):
         """Set up a n-dimensional board
         """
@@ -84,7 +84,7 @@ class Board(object):
         #
         # This can be a sub-board of another board: a slice.
         # If that's the case, the boards share a common data structure
-        # and this one is offset from the other. 
+        # and this one is offset from the other.
         # NB this means that if a slice is taken of a slice, the offset must itself be offset!
         #
         self._data = {} if _global_board is None else _global_board
@@ -92,6 +92,11 @@ class Board(object):
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
+
+    def __eq__(self, other):
+        return \
+            self.dimensions == other.dimensions and \
+            all(d1 == d2 for (d1, d2) in zip(b.iterdata(), c.iterdata()))
 
     def dumped(self):
         if self._offset_from_global:
@@ -108,29 +113,33 @@ class Board(object):
             data = " [{}]".format(self[coord] if self[coord] is not None else "")
             yield "  {}{}{}".format(coord, global_coord, data)
         yield "}"
-    
+
     def dump(self, outf=sys.stdout):
         for line in self.dumped():
             outf.write(line + "\n")
-        
+
     def _is_in_bounds(self, coord):
+        if len(coord) != len(self.dimensions):
+            raise self.InvalidDimensionsError(
+                "Coordinate {} has {} dimensions; the board has {}".format(coord, len(coord), len(self.dimensions)))
+
         return all(c in d for (c, d) in zip(coord, self.dimensions))
-    
+
     def __contains__(self, coord):
         return self._is_in_bounds(coord)
 
     def __iter__(self):
-        """Iterator over all combinations of coordinates.
-        
-        If all the dimensions are finite (the simplest and most common
-        situation) just use itertools.product.
-        
-        If any dimension is infinite, we can't use itertools.product
-        directly because it consumes its arguments in order to make
-        up the axes for its Cartesian join. Instead, we chunk through
-        any infinite dimensions, while repeating the finite ones.
+        """Iterator over all combinations of coordinates. If you need
+        data, use iterdata.
         """
-        if any(d[-1] == Infinity for d in self.dimensions):        
+        # If all the dimensions are finite (the simplest and most common
+        # situation) just use itertools.product.
+
+        # If any dimension is infinite, we can't use itertools.product
+        # directly because it consumes its arguments in order to make
+        # up the axes for its Cartesian join. Instead, we chunk through
+        # any infinite dimensions, while repeating the finite ones.
+        if any(d[-1] == Infinity for d in self.dimensions):
             start, chunk = 0, self.INFINITE_CHUNK_SIZE
             while True:
                 iterators = [d[start:start+chunk] if d[-1] == Infinity else iter(d) for d in self.dimensions]
@@ -168,7 +177,7 @@ class Board(object):
         for coord in coord1, coord2:
             if not self._is_in_bounds(coord):
                 raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
-        
+
         x1, y1 = coord1
         x2, y2 = coord2
         #
@@ -210,6 +219,12 @@ class Board(object):
                     x += 1
 
     def copy(self, with_data=True):
+        """Return a new board with the same dimensionality as the present one.
+        If with_data is truthy, populate with the current data.
+
+        NB this creates a copy, not a reference. For linked copy of the board,
+        use __getitem__, eg b2 = b1[:, :, :]
+        """
         board = self.__class__(tuple(len(d) for d in self.dimensions))
         if with_data:
             for coord, value in self.iterdata():
@@ -225,7 +240,7 @@ class Board(object):
 
     def __getitem__(self, item):
         """The item is either a tuple of numbers, representing a single
-        coordinate on the board, or a tuple of slices representing a copy 
+        coordinate on the board, or a tuple of slices representing a copy
         of some or all of the board.
         """
         if all(isinstance(i, int) for i in item):
@@ -235,7 +250,7 @@ class Board(object):
             return self._slice(item)
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name))
-    
+
     def __setitem__(self, coord, value):
         coord = self._normalised_coord(coord)
         self._data[coord] = value
@@ -266,7 +281,7 @@ class Board(object):
                 raise IndexError("Cannot use negative index {} on an infinite dimension".format(c))
             else:
                 normalised_coord.append(len(d) + c if c < 0 else c)
-        
+
         if not self._is_in_bounds(coord):
             raise IndexError("Coordinate {} is out-of-bounds on board {!r}".format(coord, self))
 
@@ -285,7 +300,7 @@ class Board(object):
         slice_indices = [slice.indices(len(dimension)) for (slice, dimension) in zip(slices, self.dimensions)]
         if any(abs(step) != 1 for start, stop, step in slice_indices):
             raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
-        
+
         _sizes = []
         for (start, stop, step), dimension in zip(slice_indices, self.dimensions):
             if len(dimension) == Infinity:
@@ -314,14 +329,14 @@ class Board(object):
                 min(c[n_dimension] for c in data_in_use),
                 max(c[n_dimension] for c in data_in_use)
             )
-            
+
     def occupied(self):
         """Return the bounding box of space occupied
         """
         min_coord = tuple(min(coord) for coord, value in zip(*self.iterdata()))
         max_coord = tuple(max(coord) for coord, value in zip(*self.iterdata()))
         return min_coord, max_coord
-    
+
     def neighbours(self, coord):
         """For a given coordinate, yield each of its nearest
         neighbours along all dimensions, mapping each coordinate to
@@ -341,9 +356,25 @@ class Board(object):
         # ... and remove the coordinate itself
         #
         gcoords.remove(coord)
-        
+
         for g in gcoords:
-            yield self._from_global(gcoord), self._data.get(gcoord, Empty)
-    
+            yield self._from_global(g), self._data.get(g, Empty)
+
+    def populate(self, iterable):
+        """Populate the entire board from an iterable
+
+        The iterable can be shorter or longer than the board. The two
+        are zipped together so the population will stop when the shorter
+        is exhausted.
+
+        This is a convenience method both to assist testing and also for,
+        eg, games like Boggle or word-searches where the board must start
+        filled with letters etc. If the data needs to be, eg, a random or
+        weighted choice then this should be implemented in the iterator
+        supplied.
+        """
+        for coord, value in zip(self, iter(iterable)):
+            self[coord] = value
+
 if __name__ == '__main__':
     pass
