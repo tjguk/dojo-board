@@ -28,27 +28,6 @@ Absolutely basic usage::
     b[0, 0] = "X"
     b[1, 0] = "O"
 
-Local and Global coordinates
-----------------------------
-
-Since one board can represent a slice of another, there are two levels
-of coordinates: local and global. Coordinates passed to or returned from
-any of the public API methods are always local for that board. They
-represent the natural coordinate space for the board. Internally, the
-module will use global coordinates, translating as necessary.
-
-Say you're managing a viewport of a tile-based dungeon game where the
-master dungeon board is 100 x 100 but the visible board is 10 x 10.
-Your viewport board is currently representing the slice of the master
-board from (5, 5) to (14, 14). Changing the item at position (2, 2) on
-the viewport board will change the item at position (7, 7) on the master
-board (and vice versa).
-
-As a user of the API you don't need to know this, except to understand
-that a board slice is essentially a view on its parent. If you wish
-to subclass or otherwise extend the board, you'll need to note where
-coordinate translations are necessary.
-
 Usage
 -----
 
@@ -156,3 +135,33 @@ To populate the board from an arbitrary iterator, use .populate::
 
     b1 = board.Board((4, 4))
     b1.populate(random_letters())
+
+To clear the board::
+
+    b1 = board.Board((3, 3))
+    b1.populate(range(10))
+    len(b1) # 9
+    b1.clear()
+    len(b1) # 0
+
+Local and Global coordinates
+----------------------------
+
+Since one board can represent a slice of another, there are two levels
+of coordinates: local and global. Coordinates passed to or returned from
+any of the public API methods are always local for that board. They
+represent the natural coordinate space for the board. Internally, the
+module will use global coordinates, translating as necessary.
+
+Say you're managing a viewport of a tile-based dungeon game where the
+master dungeon board is 100 x 100 but the visible board is 10 x 10.
+Your viewport board is currently representing the slice of the master
+board from (5, 5) to (14, 14). Changing the item at position (2, 2) on
+the viewport board will change the item at position (7, 7) on the master
+board (and vice versa).
+
+As a user of the API you don't need to know this, except to understand
+that a board slice is essentially a view on its parent. If you wish
+to subclass or otherwise extend the board, you'll need to note where
+coordinate translations are necessary.
+

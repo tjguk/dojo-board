@@ -91,12 +91,18 @@ class Board(object):
         self._offset_from_global = _offset_from_global
 
     def __repr__(self):
-        return "<{} {}>".format(self.__class__.__name__, tuple(len(d) for d in self.dimensions))
+        return "<{} {}>".format(self.__class__.__name__, tuple(("Infinity" if isinstance(d, InfiniteDimension) else len(d)) for d in self.dimensions))
 
     def __eq__(self, other):
         return \
             self.dimensions == other.dimensions and \
-            all(d1 == d2 for (d1, d2) in zip(b.iterdata(), c.iterdata()))
+            dict(self.iterdata()) == dict(other.iterdata())
+
+    def __len__(self):
+        return len(self._data)
+
+    def __nonzero__(self):
+        return bool(self._data)
 
     def dumped(self):
         if self._offset_from_global:
@@ -336,6 +342,20 @@ class Board(object):
         min_coord = tuple(min(coord) for coord, value in zip(*self.iterdata()))
         max_coord = tuple(max(coord) for coord, value in zip(*self.iterdata()))
         return min_coord, max_coord
+
+    def itercoords(self, coord1, coord2):
+        """Iterate over the coordinates in between the two coordinates which
+        exist in the local coordinate space.
+
+        So on a 3x3 board, iterating between (0, 0) and (2, 1) would give:
+
+          (0, 0), (1, 0), (2, 0), (1, 0), (1, 1), (2, 1)
+
+        While iterating between (2, 1) and (3, 3) would give:
+
+          (2, 1), (2, 2)
+        """
+        raise NotImplementedError
 
     def neighbours(self, coord):
         """For a given coordinate, yield each of its nearest

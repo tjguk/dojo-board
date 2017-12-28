@@ -148,6 +148,30 @@ class BoardIteration(BoardTest):
 
         self.assertEqual(set(b.iterdata()), set(results))
 
+    def test_itercoords_all_on_board(self):
+        """Iterate over the coords between a pair of coords where
+        all are on this board
+        """
+        b = Board((3, 3))
+        coords = set(b.itercoords((0, 0), (1, 1)))
+        self.assertEqual(coords, {(0, 0), (1, 0), (1, 0), (1, 1)})
+
+    def test_itercoords_none_on_board(self):
+        """Iterate over the coords between a pair of coords where
+        none are on this board
+        """
+        b = Board((1, 1))
+        coords = set(b.itercoords((2, 2), (2, 2)))
+        self.assertEqual(coords, set())
+
+    def test_itercoords_some_on_board(self):
+        """Iterate over the coords between a pair of coords where
+        some are on this board
+        """
+        b = Board((1, 1))
+        coords = set(b.itercoords((0, 0), (2, 2)))
+        self.assertEqual(coords, {(0, 0)})
+
 class BoardCopy(BoardTest):
     """Copying a board can result in a new board, or a subboard
     linked to the original. The former is achieved by the .copy
@@ -305,6 +329,98 @@ class BoardOffset(BoardTest):
         obj = object()
         b2[0, 0] = obj
         self.assertIs(b[1, 1], obj)
+
+class BoardDunders(BoardTest):
+    """Sundry dunder methods such as __eq__, __len__ and so on
+    """
+
+    def test_eq(self):
+        b1 = Board((1, 1))
+        b1.populate(range(100))
+        b2 = b1.copy()
+        self.assertTrue(b2 == b1)
+
+    def test_eq_different_dimensions(self):
+        b1 = Board((1, 1))
+        b2 = Board((2, 2))
+        self.assertFalse(b2 == b1)
+
+    def test_eq_different_dimensionality(self):
+        b1 = Board((1, 1, 1))
+        b2 = Board((2, 2))
+        self.assertFalse(b2 == b1)
+
+    def test_eq_different_data(self):
+        b1 = Board((1, 1))
+        b1.populate(range(100))
+        b2 = b1.copy()
+        del b2[0, 0]
+        self.assertFalse(b2 == b1)
+
+    def test_len_empty(self):
+        b = Board((1, 1))
+        self.assertEqual(len(b), 0)
+
+    def test_len_1(self):
+        b = Board((1, 1))
+        b.populate(range(100))
+        self.assertEqual(len(b), 1)
+
+    def test_len_full(self):
+        b = Board((3, 3))
+        b.populate(range(100))
+        self.assertEqual(len(b), 9)
+
+    def test_len_infinite(self):
+        """Check that len still works when at least one of the dimensions
+        is infinite
+        """
+        b = Board((3, Infinity))
+        b.populate(range(100))
+        self.assertEqual(len(b), 100)
+
+    def test_bool_empty(self):
+        b = Board((1, 1))
+        self.assertFalse(b)
+
+    def test_bool_nonempty(self):
+        b = Board((1, 1))
+        b.populate(range(100))
+        self.assertTrue(b)
+
+    def test_bool_infinite(self):
+        """Check that bool still works when at least one of the dimensions
+        is infinite
+        """
+        b = Board((3, Infinity))
+        b.populate(range(100))
+        self.assertTrue(b)
+
+class BoardOccupied(BoardTest):
+    """Check the determination of the bounding box of occupied positions
+    """
+    def test_empty(self):
+        """If the board is empty, a pair of empty tuples will be returned
+        """
+        b = Board((1, 1))
+        self.assertEqual(b.occupied(), ((), ()))
+
+    def test_single_position(self):
+        b = Board((3, 3))
+        min_coord = max_coord = (1, 1)
+        expected = min_coord, max_coord
+        b[min_coord] = "*"
+        self.assertEqual(b.occupied(), expected)
+
+    def test_square(self):
+        raise NotImplementedError
+        b = Board((3, 3))
+        min_coord = (0, 0)
+        max_coord = (1, 1)
+
+        expected = min_coord, max_coord
+        b[min_coord] = "*"
+        self.assertEqual(b.occupied(), expected)
 
 if __name__ == '__main__':
     unittest.main()
