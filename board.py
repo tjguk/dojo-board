@@ -355,7 +355,9 @@ class Board(object):
 
           (2, 1), (2, 2)
         """
-        raise NotImplementedError
+        for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(coord1, coord2))):
+            if self._is_in_bounds(coord):
+                yield coord
 
     def neighbours(self, coord):
         """For a given coordinate, yield each of its nearest

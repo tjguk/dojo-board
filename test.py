@@ -154,7 +154,7 @@ class BoardIteration(BoardTest):
         """
         b = Board((3, 3))
         coords = set(b.itercoords((0, 0), (1, 1)))
-        self.assertEqual(coords, {(0, 0), (1, 0), (1, 0), (1, 1)})
+        self.assertEqual(coords, {(0, 0), (0, 1), (1, 0), (1, 1)})
 
     def test_itercoords_none_on_board(self):
         """Iterate over the coords between a pair of coords where
