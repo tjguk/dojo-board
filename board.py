@@ -18,13 +18,23 @@ Empty = _Empty()
 
 class InfiniteDimension(object):
 
+    infinite_chunk_size = 10
+
     def __repr__(self):
         return "<{}>".format(self.__class__.__name__)
 
     def __iter__(self):
         return itertools.count()
 
+    def __eq__(self, other):
+        #
+        # Ensure that any infinite dimension is equal to any other
+        #
+        return isinstance(other, self.__class__)
+
     def __contains__(self, item):
+        if item < 0:
+            return False
         return True
 
     def __len__(self):
@@ -56,7 +66,7 @@ class InfiniteDimension(object):
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
 
 class Board(object):
-    """Board - represent a board of stated dimensions, possibly infinite.
+    """Board - represent a board of n dimensions, each possibly infinite.
 
     A location on the board is represented as an n-dimensional
     coordinate, matching the dimensionality originally specified.
@@ -71,8 +81,6 @@ class Board(object):
     class BoardError(BaseException): pass
     class InvalidDimensionsError(BoardError): pass
     class OutOfBoundsError(BoardError): pass
-
-    INFINITE_CHUNK_SIZE = 10
 
     def __init__(self, dimension_sizes, _global_board=None, _offset_from_global=None):
         """Set up a n-dimensional board
@@ -90,10 +98,13 @@ class Board(object):
         # NB this means that if a slice is taken of a slice, the offset must itself be offset!
         #
         self._data = {} if _global_board is None else _global_board
-        self._offset_from_global = _offset_from_global
+        self._offset_from_global = _offset_from_global or tuple(0 for _ in self.dimensions)
 
     def __repr__(self):
-        return "<{} {}>".format(self.__class__.__name__, tuple(("Infinity" if isinstance(d, InfiniteDimension) else len(d)) for d in self.dimensions))
+        return "<{} ({})>".format(
+            self.__class__.__name__,
+            ", ".join(("Infinity" if isinstance(d, InfiniteDimension) else str(len(d))) for d in self.dimensions)
+        )
 
     def __eq__(self, other):
         return \
@@ -105,20 +116,36 @@ class Board(object):
         # Return the populated size of the board, including only
         # data items within the slice if any.
         #
-        return sum(1 for coord in self._data if self._is_in_bounds(coord))
+        return len(list(self.iterdata()))
 
     def __nonzero__(self):
         return any(coord for coord in self._data if self._is_in_bounds(coord))
 
+    @property
+    def is_offset(self):
+        """Is this board offset from a different board?"""
+        return any(o for o in self._offset_from_global)
+
+    @property
+    def has_finite_dimensions(self):
+        """Does this board have at least one finite dimension?"""
+        return any(not isinstance(d, InfiniteDimension) for d in self.dimensions)
+
+    @property
+    def has_infinite_dimensions(self):
+        """Does this board have at least one infinite dimension?"""
+        return any(isinstance(d, InfiniteDimension) for d in self.dimensions)
+
     def dumped(self):
-        if self._offset_from_global:
+        is_offset = any(o for o in self._offset_from_global)
+        if is_offset:
             offset = " offset by {}".format(self._offset_from_global)
         else:
             offset = ""
         yield repr(self) + offset
         yield "{"
         for coord, value in self.iterdata():
-            if self._offset_from_global:
+            if is_offset:
                 global_coord = " => {}".format(self._to_global(coord))
             else:
                 global_coord = ""
@@ -137,6 +164,10 @@ class Board(object):
 
         return all(c in d for (c, d) in zip(coord, self.dimensions))
 
+    def _check_in_bounds(self, coord):
+        if not self._is_in_bounds(coord):
+            raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
+
     def __contains__(self, coord):
         return self._is_in_bounds(coord)
 
@@ -152,7 +183,7 @@ class Board(object):
         # up the axes for its Cartesian join. Instead, we chunk through
         # any infinite dimensions, while repeating the finite ones.
         if any(d[-1] == Infinity for d in self.dimensions):
-            start, chunk = 0, self.INFINITE_CHUNK_SIZE
+            start, chunk = 0, InfiniteDimension.infinite_chunk_size
             while True:
                 iterators = [d[start:start+chunk] if d[-1] == Infinity else iter(d) for d in self.dimensions]
                 for coord in itertools.product(*iterators):
@@ -163,16 +194,10 @@ class Board(object):
                 yield coord
 
     def _to_global(self, coord):
-        if not self._offset_from_global:
-            return tuple(coord)
-        else:
-            return tuple(c + o for (c, o) in zip(coord, self._offset_from_global))
+        return tuple(c + o for (c, o) in zip(coord, self._offset_from_global))
 
     def _from_global(self, coord):
-        if not self._offset_from_global:
-            return tuple(coord)
-        else:
-            return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
+        return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
 
     def iterdata(self):
         """Generate the list of data in local coordinate terms.
@@ -182,6 +207,11 @@ class Board(object):
             if self._is_in_bounds(lcoord):
                 yield lcoord, value
 
+    def lendata(self):
+        """Return the number of data items populated
+        """
+        return sum(1 for _ in self.iterdata())
+
     def iterline(self, coord1, coord2, extend=False):
         """Generate all the coordinates in a line which pass through
         coord1 and coord2, optionally extending in both directions.
@@ -189,8 +219,7 @@ class Board(object):
         if coord1 == coord2:
             raise ValueError("Distinct coordinates must be supplied for line iteration")
         for coord in coord1, coord2:
-            if not self._is_in_bounds(coord):
-                raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
+            self._check_in_bounds(coord)
 
         x1, y1 = coord1
         x2, y2 = coord2
@@ -280,6 +309,9 @@ class Board(object):
         """Given a coordinate, check whether it's the right dimensionality
         for this board and whether it's within bounds. Return the underlying
         global coordinate.
+
+        If a negative number is given, apply the usual subscript maths
+        to come up with an index from the end of the dimension.
         """
         if len(coord) != len(self.dimensions):
             raise IndexError("Coordinate {} has {} dimensions; the board has {}".format(coord, len(coord), len(self.dimensions)))
@@ -289,21 +321,14 @@ class Board(object):
         # for the fact that you can't use negative indices if the
         # dimension is infinite
         #
-        normalised_coord = []
-        for c, d in zip(coord, self.dimensions):
-            if c < 0 and not d:
-                raise IndexError("Cannot use negative index {} on an infinite dimension".format(c))
-            else:
-                normalised_coord.append(len(d) + c if c < 0 else c)
-
-        if not self._is_in_bounds(coord):
-            raise IndexError("Coordinate {} is out-of-bounds on board {!r}".format(coord, self))
-
-        return self._to_global(coord)
+        if any(isinstance(d, InfiniteDimension) and c < 0 for (c, d) in zip(coord, self.dimensions)):
+            raise IndexError("Cannot use negative index {} on an infinite dimension".format(c))
+        normalised_coord = tuple(len(d) + c if c < 0 else c for (c, d) in  zip(coord, self.dimensions))
+        self._check_in_bounds(normalised_coord)
+        return self._to_global(normalised_coord)
 
     def _slice(self, slices):
-        """Produce a subset of this board, possibly of fewer dimensions,
-        linked to the same underlying data.
+        """Produce a subset of this board linked to the same underlying data.
         """
         if len(slices) != len(self.dimensions):
             raise IndexError("Slices {} have {} dimensions; the board has {}".format(slices, len(slices), len(self.dimensions)))
@@ -315,20 +340,20 @@ class Board(object):
         if any(abs(step) != 1 for start, stop, step in slice_indices):
             raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
 
+        #
+        # Create the new dimensions: infinite dimensions remain infinite no
+        # matter how they're sliced. (Although they can have a starting offset)
+        #
         _sizes = []
         for (start, stop, step), dimension in zip(slice_indices, self.dimensions):
-            if len(dimension) == Infinity:
-                _sizes.append(Infinity)
-            else:
-                _sizes.append(stop - start)
-        sizes = tuple(_sizes)
-        #~ sizes = tuple(Infinity if len(d) is Infinity else (stop - start) for (start, stop, step), d in zip(slice_indices, self.dimensions))
+            _sizes.append(stop - start)
+        sizes = tuple(Infinity if isinstance(d, InfiniteDimension) else (stop - start) for (start, stop, step), d in zip(slice_indices, self.dimensions))
+
         #
         # Need to take into account the offset of this board, which might
         # itself be offset from the parent board.
         #
-        _offset_from_global = self._offset_from_global or tuple(0 for _ in self.dimensions)
-        offset = tuple(o + start for (o, (start, stop, step)) in zip(_offset_from_global, slice_indices))
+        offset = tuple(o + start for (o, (start, stop, step)) in zip(self._offset_from_global, slice_indices))
         return self.__class__(sizes, self._data, offset)
 
     def _occupied_dimension(self, n_dimension):
@@ -353,20 +378,19 @@ class Board(object):
         return min_coord, max_coord
 
     def itercoords(self, coord1, coord2):
-        """Iterate over the coordinates in between the two coordinates which
-        exist in the local coordinate space.
+        """Iterate over the coordinates in between the two coordinates.
 
-        So on a 3x3 board, iterating between (0, 0) and (2, 1) would give:
-
-          (0, 0), (1, 0), (2, 0), (1, 0), (1, 1), (2, 1)
-
-        While iterating between (2, 1) and (3, 3) would give:
-
-          (2, 1), (2, 2)
+        The result is all the coordinates in the rectangular section bounded
+        by coord1 and coord2
         """
+        for coord in (coord1, coord2):
+            self._check_in_bounds(coord)
+
+        #
+        # TODO: what happens if the coords are reversed?
+        #
         for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(coord1, coord2))):
-            if self._is_in_bounds(coord):
-                yield coord
+            yield coord
 
     def neighbours(self, coord):
         """For a given coordinate, yield each of its nearest
