@@ -79,6 +79,8 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
+        if any(d <= 0 for d in dimension_sizes):
+            raise self.InvalidDimensionsError("Each dimension must be >= 1")
         self.dimensions = [InfiniteDimension() if size == Infinity else range(size) for size in dimension_sizes]
 
         #
@@ -99,10 +101,14 @@ class Board(object):
             dict(self.iterdata()) == dict(other.iterdata())
 
     def __len__(self):
-        return len(self._data)
+        #
+        # Return the populated size of the board, including only
+        # data items within the slice if any.
+        #
+        return sum(1 for coord in self._data if self._is_in_bounds(coord))
 
     def __nonzero__(self):
-        return bool(self._data)
+        return any(coord for coord in self._data if self._is_in_bounds(coord))
 
     def dumped(self):
         if self._offset_from_global:

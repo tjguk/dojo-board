@@ -2,6 +2,21 @@
 import unittest
 from board import Board, Infinity, Empty
 
+#
+# The most likely false assumptions in the code are:
+# * That boards are 2-dimensional
+# * That all dimensions are finite
+# * That boards are not slices of other boards
+# * That all dimensions have at least one element [not sure if this is valid]
+#
+# Therefore testing should reflect that. The base test class creates
+# four boards: a 4x4; a 3x3x3; a 2x2 slice of the 4x4; an 3xInf board,
+# and a board with only infinite dimensions.
+#
+# These boards will be initially fully populated along non-infinite
+# dimensions.
+#
+
 class BoardTest(unittest.TestCase):
 
     def setUp(self):
@@ -9,13 +24,44 @@ class BoardTest(unittest.TestCase):
         for i in range(3):
             self.b[i, i] = i
 
+        self.b44 = Board((4, 4))
+        self.b333 = Board((3, 3, 3))
+        self.b22 = self.b44[1:3, 1:3]
+        self.b3i = Board((3, Infinity))
+        self.binf = Board((Infinity, Infinity))
+
+        self.b44.populate(range(100))
+        self.b333.populate(range(100))
+        self.b3i.populate(range(100))
+        self.binf.populate(range(100))
+
+        self.boards = [
+            ("2d", self.b44),
+            ("3d", self.b333),
+            ("slice", self.b22),
+            ("3inf", self.b3i),
+            ("inf", self.binf)
+        ]
+
 class BoardCreationTest(BoardTest):
 
-    def test_0_dim(self):
+    def test_empty(self):
         """An exception is raised when a board is created with no dimensions
         """
         with self.assertRaises(Board.InvalidDimensionsError):
             Board(())
+
+    def test_dim_0(self):
+        """An exception is raised when one of the board dimensions is 0
+        """
+        with self.assertRaises(Board.InvalidDimensionsError):
+            Board((1, 0))
+
+    def test_dim_negative(self):
+        """An exception is raised when one of the board dimensions is < 0
+        """
+        with self.assertRaises(Board.InvalidDimensionsError):
+            Board((1, -1))
 
     def test_n_dim(self):
         """Create each of 1- to 10-dimensional boards
@@ -27,7 +73,6 @@ class BoardCreationTest(BoardTest):
     def test_one_infinite_dim(self):
         """Create a board with one infinite dimension
         """
-        inf = float("inf")
         b = Board((3, 3, Infinity))
         self.assertEqual(len(b.dimensions[0]), 3)
         self.assertEqual(len(b.dimensions[1]), 3)
@@ -36,7 +81,6 @@ class BoardCreationTest(BoardTest):
     def test_all_infinite_dims(self):
         """Create a board with every dimension infinite (a la Minecraft)
         """
-        inf = float("inf")
         b = Board((Infinity, Infinity, Infinity))
         self.assertEqual(len(b.dimensions[0]), Infinity)
         self.assertEqual(len(b.dimensions[1]), Infinity)
@@ -44,38 +88,25 @@ class BoardCreationTest(BoardTest):
 
 class BoardDump(BoardTest):
 
-    def test_finite_empty_dumped(self):
-        b = Board((3, 3))
-        dumped = list(b.dumped())
+    def test_empty_dumped(self):
         #
-        # For an empty board, should produce one header line,
+        # An empty board will produce one header line,
         # plus the curly brackets with no content (3 rows)
         #
-        self.assertEqual(len(dumped), 3)
+        for name, board in self.boards:
+            board.clear()
+            dumped = list(board.dumped())
+            self.assertEqual(len(dumped), 3, name)
 
-    def test_infinite_empty_dumped(self):
-        b = Board((3, Infinity))
-        dumped = list(b.dumped())
+    def test_dumped(self):
         #
-        # For an empty board, should produce one header line,
-        # plus the curly brackets with no content (3 rows)
+        # A populated board will produce one header line
+        # plus the curly brackets surrounding one row for
+        # each item of contents
         #
-        self.assertEqual(len(dumped), 3)
-
-    def test_finite_dumped(self):
-        b = Board((3, 3))
-        for x, y in b:
-            b[x, y] = x * y
-        dumped = list(b.dumped())
-        self.assertEqual(len(dumped), 3 + 9)
-
-    def test_infinite_dumped(self):
-        b = Board((3, Infinity))
-        for x in range(3):
-            for y in range(3):
-                b[x, y] = x * y
-        dumped = list(b.dumped())
-        self.assertEqual(len(dumped), 3 + 9)
+        for name, board in self.boards:
+            dumped = list(board.dumped())
+            self.assertEqual(len(dumped), 3 + len(board), name)
 
 class BoardContains(BoardTest):
     """A coordinate is considered to be "in" a board if
@@ -83,24 +114,40 @@ class BoardContains(BoardTest):
     doesn't matter whether it contains data or not.
     """
 
-    def setUp(self):
-        self.board = Board((3, 3))
-
     def test_contains(self):
-        self.assertTrue((0, 0) in self.board)
+        for name, board in self.boards:
+            #
+            # Each board will have at least an upper left position
+            #
+            coord = tuple(0 for d in board.dimensions)
+            self.assertTrue(coord in board, name)
 
     def test_does_not_contain(self):
-        self.assertFalse((3, 3) in self.board)
+        for name, board in self.boards:
+            #
+            # The entirely infinite board contains every coordinate
+            #
+            if name == "inf":
+                continue
+            #
+            # Construct a coordinate beyond each of the dimensions
+            #
+            coord = tuple(2 + len(d) for d in board.dimensions)
+            self.assertFalse(coord in board, name)
 
-    def test_contains_infinite(self):
-        self.assertTrue((0, 10) in Board((3, Infinity)))
-
-    def test_does_not_contain_infinite(self):
-        self.assertFalse((3, 10) in Board((3, Infinity)))
+    def test_inf_contains_everything(self):
+        board = self.binf
+        #
+        # Construct a coordinate beyond each of the dimensions
+        #
+        coord = tuple(2 + len(d) for d in board.dimensions)
+        self.assertTrue(coord in board)
 
     def test_contain_with_wrong_dimensionality(self):
-        with self.assertRaises(Board.InvalidDimensionsError):
-            (1, 1, 1) in Board((2, 2))
+        for name, board in self.boards:
+            with self.assertRaises(Board.InvalidDimensionsError, msg=name):
+                coord = tuple(1 for _ in board.dimensions) + (1,)
+                coord in board
 
 class BoardIteration(BoardTest):
     """A board iterates coordinates across all its dimensions in
