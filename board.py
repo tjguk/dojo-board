@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, sys
+import functools
 import itertools
 
 Default = object()
@@ -123,13 +124,17 @@ class Board(object):
 
     def __len__(self):
         #
-        # Return the populated size of the board, including only
-        # data items within the slice if any.
+        # Return the total number of positions on the board. If any of
+        # the dimensions is infinite, the total will be Infinity
         #
-        return len(list(self.iterdata()))
+        if any(isinstance(d, InfiniteDimension) for d in self.dimensions):
+            return Infinity
+        else:
+            return functools.reduce(lambda a, b: a * b, (len(d) for d in self.dimensions))
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(coord for coord in self._data if self._is_in_bounds(coord))
+    __nonzero__ = __bool__
 
     @property
     def is_offset(self):
@@ -154,7 +159,7 @@ class Board(object):
             offset = ""
         yield repr(self) + offset
         yield "{"
-        for coord, value in self.iterdata():
+        for coord, value in sorted(self.iterdata()):
             if is_offset:
                 global_coord = " => {}".format(self._to_global(coord))
             else:
@@ -351,13 +356,16 @@ class Board(object):
             raise IndexError("At least one of slices {} has a stride other than 1".format(slices))
 
         #
-        # Create the new dimensions: infinite dimensions remain infinite no
-        # matter how they're sliced. (Although they can have a starting offset)
+        # Create the new dimensions: infinite dimensions remain infinite if
+        # they're sliced open-ended, eg [1:]. Otherwise they become finite
+        # dimensions of the appropriate lengthm eg [1:3] gives a finite dimension
+        # of length 2
         #
-        _sizes = []
-        for (start, stop, step), dimension in zip(slice_indices, self.dimensions):
-            _sizes.append(stop - start)
-        sizes = tuple(Infinity if isinstance(d, InfiniteDimension) else (stop - start) for (start, stop, step), d in zip(slice_indices, self.dimensions))
+        sizes = tuple(
+            Infinity if (isinstance(d, InfiniteDimension) and s.stop is None) 
+            else (stop - start) 
+            for s, (start, stop, step), d in zip(slices, slice_indices, self.dimensions)
+        )
 
         #
         # Need to take into account the offset of this board, which might

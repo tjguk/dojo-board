@@ -5,15 +5,15 @@ import unittest
 from board import Board, Infinity, Empty, InfiniteDimension
 
 #
-# The most likely false assumptions in the code are:
-# * That boards are 2-dimensional
-# * That all dimensions are finite
-# * That boards are not slices of other boards
-# * That all dimensions have at least one element [not sure if this is valid]
+# The most likely false assumptions in the code will be:
+# * that boards are 2-dimensional
+# * that all dimensions are finite
+# * that boards are not slices of other boards
+# * that all dimensions have at least two elements
 #
 # Therefore testing should reflect that. The base test class creates
-# four boards: a 4x4; a 3x3x3; a 2x2 slice of the 4x4; an 3xInf board,
-# and a board with only infinite dimensions.
+# several boards intended to exercise the edge cases, including a
+# board with only infinite dimensions.
 #
 # These boards will be initially fully populated along non-infinite
 # dimensions.
@@ -22,13 +22,10 @@ from board import Board, Infinity, Empty, InfiniteDimension
 class BoardTest(unittest.TestCase):
 
     def setUp(self):
-        self.b = Board((3, 3))
-        for i in range(3):
-            self.b[i, i] = i
-
         self.b1 = Board((1, 1))
         self.b44 = Board((4, 4))
         self.b333 = Board((3, 3, 3))
+        self.b5555 = Board((5, 5, 5, 5))
         self.b33 = self.b44[1:, 1:]
         self.b22 = self.b33[1:, 1:]
         self.b3i = Board((3, Infinity))
@@ -117,7 +114,7 @@ class BoardDump(BoardTest):
 class BoardContains(BoardTest):
     """A coordinate is considered to be "in" a board if
     it's within the bounds of the *local* coordinates. It
-    doesn't matter whether it contains data or not.
+    doesn't matter whether that position contains data or not.
     """
 
     def test_contains(self):
@@ -152,8 +149,8 @@ class BoardContains(BoardTest):
 
     def test_contain_with_wrong_dimensionality(self):
         for name, board in self.boards:
+            coord = tuple(1 for _ in board.dimensions) + (1,)
             with self.assertRaises(Board.InvalidDimensionsError, msg=name):
-                coord = tuple(1 for _ in board.dimensions) + (1,)
                 coord in board
 
 class BoardIteration(BoardTest):
@@ -163,7 +160,9 @@ class BoardIteration(BoardTest):
     non-infinite dimensions.
 
     The .iterdata method yield the coordinate and its value for each
-    coordinate in the local space which has a value.
+    coordinate in the local space which has a value. NB iterdata is
+    actually iterating over a dictionary and so the order of coordinates
+    is arbitrary
     """
 
     def test_finite_iteration(self):
@@ -204,7 +203,7 @@ class BoardIteration(BoardTest):
             if board.has_infinite_dimensions:
                 data_length = Infinity
             else:
-                data_length = functools.reduce(lambda a, b: a * b, [len(d) for d in board.dimensions])
+                data_length = functools.reduce(lambda a, b: a * b, (len(d) for d in board.dimensions))
             expected = set(data for data, _ in zip(self.test_data, range(data_length)))
             self.assertSetEqual(expected, set(data for coord, data in board.iterdata()), name)
 
@@ -226,11 +225,9 @@ class BoardIteration(BoardTest):
                 next(board.itercoords(coord1, coord2))
 
 class BoardCopy(BoardTest):
-    """Copying a board can result in a new board, or a subboard
-    linked to the original. The former is achieved by the .copy
-    command, the latter by slicing the original (similar to pulling
-    out the data at a specific coordinate, but using a slice notation
-    instead).
+    """Copying a board results in a new board, optionally containing
+    the original data. The boards are not linked once the copy is made:
+    changing the data in one will affect the other
     """
 
     def test_copy_without_data_dimensions(self):
@@ -292,91 +289,6 @@ class BoardCopy(BoardTest):
             board2[coord] = obj
             self.assertIsNot(board[coord], obj, name)
 
-    def test_slice_whole_dimensions(self):
-        #
-        # Slicing an entire board results in a second board linked to the first
-        # with the same dimensionality
-        #
-        for name, board in self.boards:
-            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
-            board2 = board[coord_slices]
-            self.assertEqual(board2.dimensions, board.dimensions)
-
-    def test_slice_whole_same_data(self):
-        #
-        # Slicing a board results in a second board linked to the first
-        # with the same data
-        #
-        for name, board in self.boards:
-            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
-            board2 = board[coord_slices]
-            self.assertTrue(all(d1 == d2 for (d1, d2) in zip(board.iterdata(), board2.iterdata())), name)
-
-    def test_slice_whole_linked(self):
-        #
-        # Slicing a board results in a second board linked to the first
-        # such that a change to the data in one affects the other
-        #
-        for name, board in self.boards:
-            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
-            board2 = board[coord_slices]
-
-            #
-            # Update the second board at (0, ...) and confirm that
-            # the first board has the same data at the same position
-            #
-            obj = object()
-            coord = tuple(0 for _ in board2.dimensions)
-            board2[coord] = obj
-            self.assertIs(board[coord], obj, name)
-
-    def test_slice_part_dimensions(self):
-        #
-        # Slicing a board results in a second board linked to the first
-        # such that a change to the data of one affects the other. In
-        # this case, the second board contains only a subset of the first
-        #
-        for name, board in self.boards:
-            if any(len(d) == 1 for d in board.dimensions):
-                return unittest.skip("Won't try to slice a 1-element dimension")
-            #
-            # Slice to exclude the 0th element
-            #
-            offset = tuple(1 for _ in board.dimensions)
-            coord_slices = tuple(slice(o, None) for o in offset)
-            board2 = board[coord_slices]
-
-            #
-            # (Infinite dimensions remain infinite)
-            #
-            expected_lengths = [len(d) if isinstance(d, InfiniteDimension) else len(d) -1 for d in board.dimensions]
-            self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
-
-    def test_slice_part_linked(self):
-        #
-        # Slicing a board results in a second board linked to the first
-        # such that a change to the data of one affects the other. In
-        # this case, the second board contains only a subset of the first
-        #
-        for name, board in self.boards:
-            if any(len(d) == 1 for d in board.dimensions):
-                return unittest.skip("Won't try to slice a 1-element dimension")
-            #
-            # Slice to exclude the 0th element
-            #
-            offset = tuple(1 for _ in board.dimensions)
-            coord_slices = tuple(slice(o, None) for o in offset)
-            board2 = board[coord_slices]
-
-            #
-            # Data at (0, ...) in the second board should match (1, ...) in the first
-            #
-            coord2 = tuple(0 for _ in board2.dimensions)
-            coord1 = tuple(i + o for (i, o) in zip(coord2, offset))
-            obj = object()
-            board2[coord2] = obj
-            self.assertIs(board[coord1], board2[coord2], name)
-
 class BoardClear(BoardTest):
     """Clearing the board removes all the data visible to the local board.
     That is, if this is a subboard of some larger board, only those items
@@ -394,7 +306,7 @@ class BoardClear(BoardTest):
         """Test that an offset board clears its own values only"""
         for name, board in self.boards:
             if any(len(d) == 1 for d in board.dimensions):
-                return unittest.skip("Won't try to slice a 1-element dimension")
+                continue # Won't try to slice a 1-element dimension
             board.populate(self.test_data)
             offset = tuple(1 for _ in board.dimensions)
             coord_slices = tuple(slice(o, None) for o in offset)
@@ -452,12 +364,8 @@ class BoardItemAccess(BoardTest):
         the local coordinate space
         """
         for name, board in self.boards:
-            #
-            # Don't bother checking out of bounds for an entirely
-            # infinite board!
-            #
             if board.has_infinite_dimensions and not board.has_finite_dimensions:
-                continue
+                continue # Won't try to check out-of-bounds on an entirely infinite board!
             coord = tuple(2 + len(d) for d in board.dimensions)
             with self.assertRaises(Board.OutOfBoundsError, msg=name):
                 board[coord]
@@ -466,152 +374,229 @@ class BoardItemAccess(BoardTest):
         """Check that a -1 index refers to the value at the last point on each
         non-infinite dimension.
         """
+        
+        #
+        # Negative indexes have no meaning on an infinite dimension.
+        # For this test, where the board also has finite dimensions,
+        # perform the test but fake in a coordinate of zero for the
+        # infinite dimensions. Skip the test where there are no
+        # finite dimensions.
+        #
+        
         for name, board in self.boards:
             if board.has_infinite_dimensions and not board.has_finite_dimensions:
-                continue
+                continue # Won't try to check for negative index an entirely infinite board
             coord = tuple(0 if d[-1] == Infinity else -1 for d in board.dimensions)
             real_coord = tuple(0 if d[-1] == Infinity else len(d) -1 for d in board.dimensions)
             obj = object()
             board[real_coord] = obj
             self.assertIs(board[coord], obj, name)
 
+class BoardSliced(BoardTest):
+    
+    def test_slice_whole_dimensions(self):
+        #
+        # Slicing an entire board results in a second board linked to the first
+        # with the same dimensionality
+        #
+        for name, board in self.boards:
+            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
+            board2 = board[coord_slices]
+            self.assertEqual(board2.dimensions, board.dimensions)
 
-    def test_all_slices(self):
-        b2 = self.b[:2, :2]
-        self.assertEqual(b2.dimensions, [d[:2] for d in self.b.dimensions])
+    def test_slice_whole_same_data(self):
         #
-        # Check that a change to b2 changes b
+        # Slicing a board results in a second board linked to the first
+        # with the same data
         #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(self.b[0, 0], obj)
+        for name, board in self.boards:
+            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
+            board2 = board[coord_slices]
+            self.assertTrue(all(d1 == d2 for (d1, d2) in zip(board.iterdata(), board2.iterdata())), name)
 
-    def test_all_slices_with_infinite(self):
-        b = Board((2, Infinity))
-        b2 = self.b[:2, :2]
-        self.assertEqual(b2.dimensions, [d[:2] for d in self.b.dimensions])
+    def test_slice_whole_linked(self):
         #
-        # Check that a change to b2 changes b
+        # Slicing a board results in a second board linked to the first
+        # such that a change to the data in one affects the other
         #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(self.b[0, 0], obj)
+        for name, board in self.boards:
+            coord_slices = tuple(slice(0, None) for _ in board.dimensions)
+            board2 = board[coord_slices]
 
-class BoardOffset(BoardTest):
-    """A board slice can result in a subboard offset from the main board
-    at one or both ends of each dimension.
-    """
+            #
+            # Update the second board at (0, ...) and confirm that
+            # the first board has the same data at the same position
+            #
+            obj = object()
+            coord = tuple(0 for _ in board2.dimensions)
+            board2[coord] = obj
+            self.assertIs(board[coord], obj, name)
 
-    def test_simple_copy(self):
-        b = self.b
-        b2 = b[:, :]
-        self.assertEqual(b.dimensions, b2.dimensions)
-        #
-        # Check that a change to b2 changes b
-        #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(self.b[0, 0], obj)
+    #
+    # Test a slice which has a start point but is open-ended
+    # eg [1:, 1:, 1:]
+    # (NB for infinite dimensions this will result in a new
+    # infinite dimension offset against the original one).
+    #
 
-    def test_short_from_origin(self):
-        b = self.b
-        b2 = b[:-1, :-1]
-        self.assertEqual([d[:-1] for d in b.dimensions], b2.dimensions)
-        #
-        # Check that a change to b2 changes b
-        #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(b[0, 0], obj)
+    def test_slice_part_open_dimensions(self):
+        for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                continue # Won't try to slice a 1-element dimension
+            #
+            # Slice to exclude the 0th element
+            #
+            offset = tuple(1 for _ in board.dimensions)
+            coord_slices = tuple(slice(o, None) for o in offset)
+            board2 = board[coord_slices]
 
-    def test_from_offset(self):
-        b = self.b
-        b2 = b[1:, 1:]
-        self.assertEqual([len(d[1:]) for d in b.dimensions], [len(d) for d in b2.dimensions])
-        #
-        # Check that a change to b2 changes b
-        #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(b[1, 1], obj)
+            #
+            # (Infinite dimensions remain infinite)
+            #
+            expected_lengths = [len(d) if isinstance(d, InfiniteDimension) else len(d) -1 for d in board.dimensions]
+            self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
 
-    def test_from_offset_infinite(self):
-        b = Board((3, Infinity))
-        b2 = b[1:, 1:]
-        self.assertEqual(len(b2.dimensions[0]), len(b.dimensions[0]) - 1)
-        self.assertEqual(len(b2.dimensions[1]), Infinity)
-        #
-        # Check that a change to b2 changes b
-        #
-        obj = object()
-        b2[0, 0] = obj
-        self.assertIs(b[1, 1], obj)
+    def test_slice_part_open_linked(self):
+        for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                continue # Won't try to slice a 1-element dimension
+            #
+            # Slice to exclude the 0th element
+            #
+            offset = tuple(1 for _ in board.dimensions)
+            coord_slices = tuple(slice(o, None) for o in offset)
+            board2 = board[coord_slices]
+
+            #
+            # Data at (0, ...) in the second board should match (1, ...) in the first
+            #
+            coord2 = tuple(0 for _ in board2.dimensions)
+            coord1 = tuple(i + o for (i, o) in zip(coord2, offset))
+            obj = object()
+            board2[coord2] = obj
+            self.assertIs(board[coord1], board2[coord2], name)
+
+    #
+    # Test a slice which has a start and an end point
+    # eg [1:2, 1:2, 1:2]
+    # (NB for infinite dimensions this will result in a new
+    # *finite* dimension offset against the original one).
+    #
+    
+    def test_slice_part_closed_dimensions(self):
+        for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                continue # Won't try to slice a 1-element dimension
+            #
+            # Slice to include the 0th element
+            #
+            offset_start = tuple(0 for _ in board.dimensions)
+            offset_stop = tuple(1 for _ in board.dimensions)
+            coord_slices = tuple(slice(o0, o1) for (o0, o1) in zip(offset_start, offset_stop))
+            board2 = board[coord_slices]
+
+            #
+            # (Infinite dimensions become finite)
+            #
+            expected_lengths = [o1 - o0 for (o0, o1) in zip(offset_start, offset_stop)]
+            self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
+
+    def test_slice_part_closed_linked(self):
+        for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                continue # Won't try to slice a 1-element dimension
+            #
+            # Slice to include the 0th element
+            #
+            offset_start = tuple(0 for _ in board.dimensions)
+            offset_stop = tuple(1 for _ in board.dimensions)
+            coord_slices = tuple(slice(o0, o1) for (o0, o1) in zip(offset_start, offset_stop))
+            board2 = board[coord_slices]
+
+            #
+            # Data at (0, ...) in the second board should match (1, ...) in the first
+            #
+            coord2 = tuple(0 for _ in board2.dimensions)
+            coord1 = tuple(i + o for (i, o) in zip(coord2, offset_start))
+            obj = object()
+            board2[coord2] = obj
+            self.assertIs(board[coord1], board2[coord2], name)
 
 class BoardDunders(BoardTest):
     """Sundry dunder methods such as __eq__, __len__ and so on
     """
 
+    #
+    # Boards are considered equal if they have the same number
+    # of dimensions of the same size and the data where populated is
+    # the same.
+    
     def test_eq(self):
-        b1 = Board((1, 1))
-        b1.populate(range(100))
-        b2 = b1.copy()
-        self.assertTrue(b2 == b1)
+        for name, board in self.boards:
+            board.populate(self.test_data)
+            board2 = board.copy(with_data=True)
+            self.assertEqual(board, board2, name)
 
-    def test_eq_different_dimensions(self):
-        b1 = Board((1, 1))
-        b2 = Board((2, 2))
-        self.assertFalse(b2 == b1)
+    def test_eq_empty(self):
+        for name, board in self.boards:
+            board.clear()
+            board2 = board.copy(with_data=True)
+            self.assertEqual(board, board2, name)
 
     def test_eq_different_dimensionality(self):
-        b1 = Board((1, 1, 1))
-        b2 = Board((2, 2))
-        self.assertFalse(b2 == b1)
+        for name, board in self.boards:
+            dimension_sizes2 = tuple([1 + len(d) for d in board.dimensions] + [1])
+            board2 = Board(dimension_sizes2)
+            self.assertNotEqual(board, board2, name)
+
+    def test_eq_different_dimensions(self):
+        for name, board in self.boards:
+            dimension_sizes2 = tuple(1 if len(d) == Infinity else len(d) + 1 for d in board.dimensions)
+            board2 = Board(dimension_sizes2)
+            self.assertNotEqual(board, board2, name)
 
     def test_eq_different_data(self):
-        b1 = Board((1, 1))
-        b1.populate(range(100))
-        b2 = b1.copy()
-        del b2[0, 0]
-        self.assertFalse(b2 == b1)
+        for name, board in self.boards:
+            board.populate(self.test_data)
+            board2 = board.copy(with_data=True)
+            board2.populate(reversed(self.test_data))
+            self.assertNotEqual(board, board2, name)
 
-    def test_len_empty(self):
-        b = Board((1, 1))
-        self.assertEqual(len(b), 0)
+    #
+    # The length of a board is the product of its dimension lengths,
+    # except if any of the dimensions is infinite, in which case
+    # the length is Infinity
+    #
 
-    def test_len_1(self):
-        b = Board((1, 1))
-        b.populate(range(100))
-        self.assertEqual(len(b), 1)
-
-    def test_len_full(self):
-        b = Board((3, 3))
-        b.populate(range(100))
-        self.assertEqual(len(b), 9)
+    def test_len_finite(self):
+        for name, board in self.boards:
+            if board.has_infinite_dimensions:
+                continue
+            expected_length = 1
+            for d in board.dimensions:
+                expected_length *= len(d)
+            self.assertEqual(len(board), expected_length, name)
 
     def test_len_infinite(self):
-        """Check that len still works when at least one of the dimensions
-        is infinite
-        """
-        b = Board((3, Infinity))
-        b.populate(range(100))
-        self.assertEqual(len(b), 100)
+        for name, board in self.boards:
+            if not board.has_infinite_dimensions:
+                continue
+            self.assertEqual(len(board), Infinity, name)
+
+    #
+    # A board is considered true if it has at least one position
+    # populated with data
+    #
 
     def test_bool_empty(self):
-        b = Board((1, 1))
-        self.assertFalse(b)
+        for name, board in self.boards:
+            board.clear()
+            self.assertFalse(board, name)
 
     def test_bool_nonempty(self):
-        b = Board((1, 1))
-        b.populate(range(100))
-        self.assertTrue(b)
-
-    def test_bool_infinite(self):
-        """Check that bool still works when at least one of the dimensions
-        is infinite
-        """
-        b = Board((3, Infinity))
-        b.populate(range(100))
-        self.assertTrue(b)
+        for name, board in self.boards:
+            board.populate(self.test_data)
+            self.assertTrue(board, name)
 
 class BoardOccupied(BoardTest):
     """Check the determination of the bounding box of occupied positions
