@@ -1,4 +1,13 @@
 #!python3
+#
+# The semantics of 3.x range are broadly equivalent
+# to xrange in 2.7
+#
+try:
+    range = xrange
+except NameError:
+    pass
+
 import functools
 import itertools
 import unittest
@@ -550,7 +559,7 @@ class BoardDunders(BoardTest):
 
     def test_eq_different_dimensionality(self):
         for name, board in self.boards:
-            dimension_sizes2 = tuple([1 + len(d) for d in board.dimensions] + [1])
+            dimension_sizes2 = tuple([len(d) for d in board.dimensions] + [1])
             board2 = Board(dimension_sizes2)
             self.assertNotEqual(board, board2, name)
 

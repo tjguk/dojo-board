@@ -1,16 +1,42 @@
 # -*- coding: utf-8 -*-
+#
+# The semantics of 3.x range are broadly equivalent
+# to xrange in 2.7
+#
+try:
+    range = xrange
+except NameError:
+    pass
+try:
+    long
+except NameError:
+    long = int
+
 import os, sys
 import functools
 import itertools
 
-#
-# As things stand, this must be an actual number because __len__
-# must return an integer. The actual number should be immaterial --
-# ie no calculation is ever performed against it.
-#
-# Without this restriction 'Infinity' could be a sentinel object
-#
-Infinity = sys.maxsize
+class _Infinity(int):
+    
+    def __new__(meta):
+        return sys.maxsize
+    
+    def __str__(self):
+        return "Infinity"
+    
+    def __repr__(self):
+        return "<Infinity>"
+    
+    def __eq__(self, other):
+        return other == self.size
+    
+    def __lt__(self, other):
+        return False
+    
+    def __gt__(self, other):
+        return True
+    
+Infinity = _Infinity()
 
 class _Empty(object):
 
@@ -43,7 +69,7 @@ class Dimension(BaseDimension):
         return isinstance(self, type(other)) and self._size == other._size
 
     def __repr__(self):
-        return "<{}: {}>".format(self.__class__.__name__, self.size)
+        return "<{}: {}>".format(self.__class__.__name__, self._size)
 
     def __len__(self):
         return self._size
@@ -52,7 +78,7 @@ class Dimension(BaseDimension):
         return item in self._range
 
     def __getitem__(self, item):
-        if isinstance(item, int):
+        if isinstance(item, (int, long)):
             return self._range[item]
         elif isinstance(item, slice):
             return self._range[item.start, item.stop, item.step]
@@ -68,6 +94,9 @@ class _InfiniteDimension(BaseDimension):
     def __iter__(self):
         return itertools.count()
 
+    def __repr__(self):
+        return "<Infinite Dimension>"
+    
     def __eq__(self, other):
         #
         # Ensure that any infinite dimension is equal to any other
@@ -85,11 +114,8 @@ class _InfiniteDimension(BaseDimension):
     def __len__(self):
         return Infinity
 
-    def __bool__(self):
-        return False
-
     def __getitem__(self, item):
-        if isinstance(item, int):
+        if isinstance(item, (int, long)):
             if item == 0:
                 return 0
             elif item == -1:
@@ -338,13 +364,13 @@ class Board(object):
         coordinate on the board, or a tuple of slices representing a copy
         of some or all of the board.
         """
-        if all(isinstance(i, int) for i in item):
+        if all(isinstance(i, (int, long)) for i in item):
             coord = self._normalised_coord(item)
             return self._data.get(coord, Empty)
-        elif all(isinstance(i, (int, slice)) for i in item):
+        elif all(isinstance(i, (int, long, slice)) for i in item):
             return self._slice(item)
         else:
-            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name))
+            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
 
     def __setitem__(self, coord, value):
         coord = self._normalised_coord(coord)
