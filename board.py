@@ -17,25 +17,25 @@ import functools
 import itertools
 
 class _Infinity(int):
-    
+
     def __new__(meta):
         return sys.maxsize
-    
+
     def __str__(self):
         return "Infinity"
-    
+
     def __repr__(self):
         return "<Infinity>"
-    
+
     def __eq__(self, other):
         return other == self.size
-    
+
     def __lt__(self, other):
         return False
-    
+
     def __gt__(self, other):
         return True
-    
+
 Infinity = _Infinity()
 
 class _Empty(object):
@@ -49,12 +49,12 @@ class _Empty(object):
 Empty = _Empty()
 
 class BaseDimension(object):
-    
+
     def __repr__(self):
         return "<{}>".format(self.__class__.__name__)
-    
+
 class Dimension(BaseDimension):
-    
+
     is_finite = True
     is_infinite = False
 
@@ -64,7 +64,7 @@ class Dimension(BaseDimension):
 
     def __iter__(self):
         return iter(self._range)
-    
+
     def __eq__(self, other):
         return isinstance(self, type(other)) and self._size == other._size
 
@@ -96,7 +96,7 @@ class _InfiniteDimension(BaseDimension):
 
     def __repr__(self):
         return "<Infinite Dimension>"
-    
+
     def __eq__(self, other):
         #
         # Ensure that any infinite dimension is equal to any other
@@ -289,55 +289,20 @@ class Board(object):
         """
         return sum(1 for _ in self.iterdata())
 
-    def iterline(self, coord1, coord2, extend=False):
-        """Generate all the coordinates in a line which pass through
-        coord1 and coord2, optionally extending in both directions.
-        """
-        raise NotImplementedError
-        if coord1 == coord2:
-            raise ValueError("Distinct coordinates must be supplied for line iteration")
-        for coord in coord1, coord2:
-            self._check_in_bounds(coord)
+    def iterline(self, coord, vector):
+        """Generate coordinates starting at the given one and moving
+        in the direction of the vector until the edge of the board is
+        reached. The initial coordinate must be on the board. The vector
+        must have the same dimensionality as the coordinate.
 
-        x1, y1 = coord1
-        x2, y2 = coord2
-        #
-        # If the line is vertical, extend it if required in both directions
-        # and yield all the coordinates in between
-        #
-        if x1 == x2:
-            if extend:
-                y = min(y1, y2) - 1
-                while self._is_in_bounds(x1, y):
-                    yield x1, y
-                    y -= 1
-            for y in range(y1, y2 + 1):
-                yield x1, y
-            if extend:
-                y = max(y1, y2) + 1
-                while self._is_in_bounds(x1, y):
-                    yield x1, y
-                    y += 1
-        #
-        # ... otherwise determine the function for y = mx + c
-        # and yield every coordinate
-        #
-        else:
-            m = (y2 - y1) / (x2 - x1)
-            c = y1 - (m * x1)
-            y = lambda x: m * x + c
-            if extend:
-                x = min(x1, x2) - 1
-                while self._is_in_bounds(x, y1):
-                    yield x, round(y(x))
-                    x -= 1
-            for x in range(x1, x2 + 1):
-                yield x, round(y(x))
-            if extend:
-                x = max(x1, x2) + 1
-                while self._is_in_bounds(x, y1):
-                    yield x, round(y(x))
-                    x += 1
+        NB the vector can specify a "step", eg it could be (1, 2)
+        """
+        self._check_in_bounds(coord)
+        if len(vector) != len(coord):
+            raise InvalidDimensionsError()
+        while self._is_in_bounds(coord):
+            yield coord
+            coord = tuple(c + v for (c, v) in zip(coord,vector))
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
@@ -424,9 +389,11 @@ class Board(object):
         # dimensions of the appropriate lengthm eg [1:3] gives a finite dimension
         # of length 2
         #
+        # FIXME: perhaps use the Dimension class' built-in slicers
+        #
         sizes = tuple(
-            Infinity if (d is InfiniteDimension and s.stop is None) 
-            else (stop - start) 
+            Infinity if (d is InfiniteDimension and s.stop is None)
+            else (stop - start)
             for s, (start, stop, step), d in zip(slices, slice_indices, self.dimensions)
         )
 
