@@ -4,6 +4,13 @@ import itertools
 
 Default = object()
 
+#
+# As things stand, this must be an actual number because __len__
+# must return an integer. The actual number should be immaterial --
+# ie no calculation is ever performed against it.
+#
+# Without this restriction 'Infinity' could be a sentinel object
+#
 Infinity = sys.maxsize
 
 class _Empty(object):
@@ -33,6 +40,9 @@ class InfiniteDimension(object):
         return isinstance(other, self.__class__)
 
     def __contains__(self, item):
+        #
+        # An infinite dimension includes any non-negative coordinate
+        #
         if item < 0:
             return False
         return True

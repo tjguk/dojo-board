@@ -278,7 +278,7 @@ class BoardCopy(BoardTest):
         #
         for name, board in self.boards:
             board2 = board.copy(with_data=True)
-            self.assertTrue(all(d1 == d2 for (d1, d2) in zip(board.iterdata(), board2.iterdata())), name)
+            self.assertSetEqual(set(board.iterdata()), set(board2.iterdata()), name)
 
     def test_copy_with_data_unlinked(self):
         #
@@ -337,6 +337,8 @@ class BoardCopy(BoardTest):
         # this case, the second board contains only a subset of the first
         #
         for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                return unittest.skip("Won't try to slice a 1-element dimension")
             #
             # Slice to exclude the 0th element
             #
@@ -357,6 +359,8 @@ class BoardCopy(BoardTest):
         # this case, the second board contains only a subset of the first
         #
         for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                return unittest.skip("Won't try to slice a 1-element dimension")
             #
             # Slice to exclude the 0th element
             #
@@ -389,6 +393,8 @@ class BoardClear(BoardTest):
     def test_clear_offset_board(self):
         """Test that an offset board clears its own values only"""
         for name, board in self.boards:
+            if any(len(d) == 1 for d in board.dimensions):
+                return unittest.skip("Won't try to slice a 1-element dimension")
             board.populate(self.test_data)
             offset = tuple(1 for _ in board.dimensions)
             coord_slices = tuple(slice(o, None) for o in offset)
