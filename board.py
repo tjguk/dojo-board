@@ -3,8 +3,6 @@ import os, sys
 import functools
 import itertools
 
-Default = object()
-
 #
 # As things stand, this must be an actual number because __len__
 # must return an integer. The actual number should be immaterial --
@@ -24,12 +22,48 @@ class _Empty(object):
 
 Empty = _Empty()
 
-class InfiniteDimension(object):
-
-    infinite_chunk_size = 10
-
+class BaseDimension(object):
+    
     def __repr__(self):
         return "<{}>".format(self.__class__.__name__)
+    
+class Dimension(BaseDimension):
+    
+    is_finite = True
+    is_infinite = False
+
+    def __init__(self, size):
+        self._size = size
+        self._range = range(size)
+
+    def __iter__(self):
+        return iter(self._range)
+    
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self._size == other._size
+
+    def __repr__(self):
+        return "<{}: {}>".format(self.__class__.__name__, self.size)
+
+    def __len__(self):
+        return self._size
+
+    def __contains__(self, item):
+        return item in self._range
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return self._range[item]
+        elif isinstance(item, slice):
+            return self._range[item.start, item.stop, item.step]
+        else:
+            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
+
+class _InfiniteDimension(BaseDimension):
+
+    chunk_size = 10
+    is_finite = False
+    is_infinite = True
 
     def __iter__(self):
         return itertools.count()
@@ -76,6 +110,8 @@ class InfiniteDimension(object):
         else:
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
 
+InfiniteDimension = _InfiniteDimension()
+
 class Board(object):
     """Board - represent a board of n dimensions, each possibly infinite.
 
@@ -100,7 +136,7 @@ class Board(object):
             raise self.InvalidDimensionsError("The board must have at least one dimension")
         if any(d <= 0 for d in dimension_sizes):
             raise self.InvalidDimensionsError("Each dimension must be >= 1")
-        self.dimensions = [InfiniteDimension() if size == Infinity else range(size) for size in dimension_sizes]
+        self.dimensions = [InfiniteDimension if size == Infinity else Dimension(size) for size in dimension_sizes]
 
         #
         # This can be a sub-board of another board: a slice.
@@ -114,7 +150,7 @@ class Board(object):
     def __repr__(self):
         return "<{} ({})>".format(
             self.__class__.__name__,
-            ", ".join(("Infinity" if isinstance(d, InfiniteDimension) else str(len(d))) for d in self.dimensions)
+            ", ".join(("Infinity" if d.is_infinite else str(len(d))) for d in self.dimensions)
         )
 
     def __eq__(self, other):
@@ -127,7 +163,7 @@ class Board(object):
         # Return the total number of positions on the board. If any of
         # the dimensions is infinite, the total will be Infinity
         #
-        if any(isinstance(d, InfiniteDimension) for d in self.dimensions):
+        if any(d.is_infinite for d in self.dimensions):
             return Infinity
         else:
             return functools.reduce(lambda a, b: a * b, (len(d) for d in self.dimensions))
@@ -144,12 +180,12 @@ class Board(object):
     @property
     def has_finite_dimensions(self):
         """Does this board have at least one finite dimension?"""
-        return any(not isinstance(d, InfiniteDimension) for d in self.dimensions)
+        return any(d.is_finite for d in self.dimensions)
 
     @property
     def has_infinite_dimensions(self):
         """Does this board have at least one infinite dimension?"""
-        return any(isinstance(d, InfiniteDimension) for d in self.dimensions)
+        return any(d.is_infinite for d in self.dimensions)
 
     def dumped(self):
         is_offset = any(o for o in self._offset_from_global)
@@ -197,8 +233,8 @@ class Board(object):
         # directly because it consumes its arguments in order to make
         # up the axes for its Cartesian join. Instead, we chunk through
         # any infinite dimensions, while repeating the finite ones.
-        if any(d[-1] == Infinity for d in self.dimensions):
-            start, chunk = 0, InfiniteDimension.infinite_chunk_size
+        if any(d.is_infinite for d in self.dimensions):
+            start, chunk = 0, InfiniteDimension.chunk_size
             while True:
                 iterators = [d[start:start+chunk] if d[-1] == Infinity else iter(d) for d in self.dimensions]
                 for coord in itertools.product(*iterators):
@@ -231,6 +267,7 @@ class Board(object):
         """Generate all the coordinates in a line which pass through
         coord1 and coord2, optionally extending in both directions.
         """
+        raise NotImplementedError
         if coord1 == coord2:
             raise ValueError("Distinct coordinates must be supplied for line iteration")
         for coord in coord1, coord2:
@@ -336,7 +373,7 @@ class Board(object):
         # for the fact that you can't use negative indices if the
         # dimension is infinite
         #
-        if any(isinstance(d, InfiniteDimension) and c < 0 for (c, d) in zip(coord, self.dimensions)):
+        if any(d is InfiniteDimension and c < 0 for (c, d) in zip(coord, self.dimensions)):
             raise IndexError("Cannot use negative index {} on an infinite dimension".format(c))
         normalised_coord = tuple(len(d) + c if c < 0 else c for (c, d) in  zip(coord, self.dimensions))
         self._check_in_bounds(normalised_coord)
@@ -362,7 +399,7 @@ class Board(object):
         # of length 2
         #
         sizes = tuple(
-            Infinity if (isinstance(d, InfiniteDimension) and s.stop is None) 
+            Infinity if (d is InfiniteDimension and s.stop is None) 
             else (stop - start) 
             for s, (start, stop, step), d in zip(slices, slice_indices, self.dimensions)
         )

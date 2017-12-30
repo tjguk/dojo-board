@@ -31,17 +31,22 @@ class BoardTest(unittest.TestCase):
         self.b3i = Board((3, Infinity))
         self.bii = Board((Infinity, Infinity))
 
-        self.test_data = range(100)
-
         self.boards = [
             ("1d", self.b1),
             ("2d", self.b44),
             ("3d", self.b333),
+            ("4d", self.b5555),
             ("slice33", self.b33),
             ("slice22", self.b22),
             ("3inf", self.b3i),
             ("inf", self.bii)
         ]
+        
+        #
+        # The test data set must be enough to fill all of the finite boards
+        #
+        size_of_test_data = max(len(b) for name, b in self.boards if not b.has_infinite_dimensions)
+        self.test_data = range(size_of_test_data)
         for name, board in self.boards:
             if not board.is_offset:
                 board.populate(self.test_data)
@@ -184,7 +189,7 @@ class BoardIteration(BoardTest):
         for name, board in self.boards:
             if all(len(d) != Infinity for d in board.dimensions):
                 continue
-            ranges = [(range(d.infinite_chunk_size) if isinstance(d, InfiniteDimension) else d) for d in board.dimensions]
+            ranges = [(range(d.chunk_size) if d is InfiniteDimension else d) for d in board.dimensions]
             expected = itertools.product(*ranges)
             self.assertTrue(all(a == b for a, b in zip(expected, board)), name)
 
@@ -453,7 +458,7 @@ class BoardSliced(BoardTest):
             #
             # (Infinite dimensions remain infinite)
             #
-            expected_lengths = [len(d) if isinstance(d, InfiniteDimension) else len(d) -1 for d in board.dimensions]
+            expected_lengths = [len(d) if d is InfiniteDimension else len(d) -1 for d in board.dimensions]
             self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
 
     def test_slice_part_open_linked(self):
@@ -582,7 +587,28 @@ class BoardDunders(BoardTest):
             if not board.has_infinite_dimensions:
                 continue
             self.assertEqual(len(board), Infinity, name)
+    
+    #
+    # Not really a dunder method, but masquerading as one
+    #
+    
+    def test_lendata_empty(self):
+        for name, board in self.boards:
+            board.clear()
+            self.assertEqual(board.lendata(), 0, name)
 
+    def test_lendata_1(self):
+        for name, board in self.boards:
+            board.clear()
+            board[tuple(0 for _ in board.dimensions)] = object()
+            self.assertEqual(board.lendata(), 1, name)
+
+    def test_lendata_full(self):
+        for name, board in self.boards:
+            board.clear()
+            board.populate(self.test_data)
+            self.assertEqual(board.lendata(), min(len(board), len(self.test_data)), name)
+    
     #
     # A board is considered true if it has at least one position
     # populated with data
