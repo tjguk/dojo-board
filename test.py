@@ -50,7 +50,7 @@ class BoardTest(unittest.TestCase):
             ("3inf", self.b3i),
             ("inf", self.bii)
         ]
-        
+
         #
         # The test data set must be enough to fill all of the finite boards
         #
@@ -388,7 +388,7 @@ class BoardItemAccess(BoardTest):
         """Check that a -1 index refers to the value at the last point on each
         non-infinite dimension.
         """
-        
+
         #
         # Negative indexes have no meaning on an infinite dimension.
         # For this test, where the board also has finite dimensions,
@@ -396,7 +396,7 @@ class BoardItemAccess(BoardTest):
         # infinite dimensions. Skip the test where there are no
         # finite dimensions.
         #
-        
+
         for name, board in self.boards:
             if board.has_infinite_dimensions and not board.has_finite_dimensions:
                 continue # Won't try to check for negative index an entirely infinite board
@@ -407,7 +407,7 @@ class BoardItemAccess(BoardTest):
             self.assertIs(board[coord], obj, name)
 
 class BoardSliced(BoardTest):
-    
+
     def test_slice_whole_dimensions(self):
         #
         # Slicing an entire board results in a second board linked to the first
@@ -496,7 +496,7 @@ class BoardSliced(BoardTest):
     # (NB for infinite dimensions this will result in a new
     # *finite* dimension offset against the original one).
     #
-    
+
     def test_slice_part_closed_dimensions(self):
         for name, board in self.boards:
             if any(len(d) == 1 for d in board.dimensions):
@@ -544,7 +544,7 @@ class BoardDunders(BoardTest):
     # Boards are considered equal if they have the same number
     # of dimensions of the same size and the data where populated is
     # the same.
-    
+
     def test_eq(self):
         for name, board in self.boards:
             board.populate(self.test_data)
@@ -596,11 +596,12 @@ class BoardDunders(BoardTest):
             if not board.has_infinite_dimensions:
                 continue
             self.assertEqual(len(board), Infinity, name)
-    
+
     #
     # Not really a dunder method, but masquerading as one
+    # lendata returns the number of positions occupied by data
     #
-    
+
     def test_lendata_empty(self):
         for name, board in self.boards:
             board.clear()
@@ -616,8 +617,13 @@ class BoardDunders(BoardTest):
         for name, board in self.boards:
             board.clear()
             board.populate(self.test_data)
+            #
+            # Population will stop when it runs out of data or when it
+            # runs out of board to populate. The resulting data will
+            # be the smaller of the board size and data length
+            #
             self.assertEqual(board.lendata(), min(len(board), len(self.test_data)), name)
-    
+
     #
     # A board is considered true if it has at least one position
     # populated with data
@@ -630,7 +636,7 @@ class BoardDunders(BoardTest):
 
     def test_bool_nonempty(self):
         for name, board in self.boards:
-            board.populate(self.test_data)
+            board.populate([object()])
             self.assertTrue(board, name)
 
 class BoardOccupied(BoardTest):
@@ -639,25 +645,25 @@ class BoardOccupied(BoardTest):
     def test_empty(self):
         """If the board is empty, a pair of empty tuples will be returned
         """
-        b = Board((1, 1))
-        self.assertEqual(b.occupied(), ((), ()))
+        for name, board in self.boards:
+            board.clear()
+            self.assertEqual(board.occupied(), ((), ()), name)
 
     def test_single_position(self):
-        b = Board((3, 3))
-        min_coord = max_coord = (1, 1)
-        expected = min_coord, max_coord
-        b[min_coord] = "*"
-        self.assertEqual(b.occupied(), expected)
+        for name, board in self.boards:
+            min_coord = max_coord = tuple(0 for _ in board.dimensions)
+            expected = min_coord, max_coord
+            board[min_coord] = object()
+            self.assertEqual(board.occupied(), expected, name)
 
     def test_square(self):
-        b = Board((3, 3))
-        min_coord = (0, 0)
-        max_coord = (1, 1)
-
-        expected = min_coord, max_coord
-        b[min_coord] = "*"
-        b[max_coord] = "*"
-        self.assertEqual(b.occupied(), expected)
+        for name, board in self.boards:
+            min_coord = tuple(0 for _ in board.dimensions)
+            max_coord = tuple(0 if d.is_infinite else len(d) - 1 for d in board.dimensions)
+            expected = min_coord, max_coord
+            board[min_coord] = object()
+            board[max_coord] = object()
+            self.assertEqual(board.occupied(), expected, name)
 
 if __name__ == '__main__':
     unittest.main()
