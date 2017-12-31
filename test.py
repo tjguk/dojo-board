@@ -85,7 +85,9 @@ class BoardCreationTest(BoardTest):
         """
         for n in range(1, 10):
             b = Board(tuple(1 for i in range(n)))
-            self.assertEqual(len(b.dimensions), n)
+            actual = len(b.dimensions)
+            expected = n
+            self.assertEqual(expected, actual)
 
     def test_one_infinite_dim(self):
         """Create a board with one infinite dimension
@@ -113,7 +115,10 @@ class BoardDump(BoardTest):
         for name, board in self.boards:
             board.clear()
             dumped = list(board.dumped())
-            self.assertEqual(len(dumped), 3, name)
+
+            expected = 3
+            actual = len(dumped)
+            self.assertEqual(expected, actual, name)
 
     def test_dumped(self):
         #
@@ -123,7 +128,10 @@ class BoardDump(BoardTest):
         #
         for name, board in self.boards:
             dumped = list(board.dumped())
-            self.assertEqual(len(dumped), 3 + board.lendata(), name)
+
+            expected = 3 + board.lendata()
+            actual = len(dumped)
+            self.assertEqual(expected, actual, name)
 
 class BoardContains(BoardTest):
     """A coordinate is considered to be "in" a board if
@@ -188,7 +196,8 @@ class BoardIteration(BoardTest):
             if any(len(d) == Infinity for d in board.dimensions):
                 continue
             expected = set(itertools.product(*board.dimensions))
-            self.assertSetEqual(expected, set(board), name)
+            actual = set(board)
+            self.assertSetEqual(expected, actual, name)
 
     def test_infinite_iteration(self):
         #
@@ -219,7 +228,21 @@ class BoardIteration(BoardTest):
             else:
                 data_length = functools.reduce(lambda a, b: a * b, (len(d) for d in board.dimensions))
             expected = set(data for data, _ in zip(self.test_data, range(data_length)))
-            self.assertSetEqual(expected, set(data for coord, data in board.iterdata()), name)
+            actual = set(data for coord, data in board.iterdata())
+            self.assertSetEqual(expected, actual, name)
+
+    def test_itercoords(self):
+        #
+        # itercoords generates all the coordinates between two corners
+        #
+        for name, board in self.boards:
+            coord1 = tuple(0 for d in board.dimensions)
+            coord2 = tuple(3 if d.is_infinite else len(d) - 1 for d in board.dimensions)
+
+            ranges = [range(c1, 1 + c2) for (c1, c2) in zip(coord1, coord2)]
+            expected_results = itertools.product(*ranges)
+            actual = board.itercoords(coord1, coord2)
+            self.assertEqual(list(expected_results), list(actual), name)
 
     def test_itercoords_off_board(self):
         #
@@ -251,7 +274,9 @@ class BoardCopy(BoardTest):
         #
         for name, board in self.boards:
             board2 = board.copy(with_data=False)
-            self.assertEqual(board2.dimensions, board.dimensions, name)
+            expected = board.dimensions
+            actual = board2.dimensions
+            self.assertEqual(expected, actual, name)
 
     def test_copy_without_data_empty(self):
         #
@@ -271,7 +296,9 @@ class BoardCopy(BoardTest):
             obj = object()
             coord = tuple(0 for _ in board2.dimensions)
             board2[coord] = obj
-            self.assertIsNot(board[coord], obj, name)
+            expected = obj
+            actual = board[coord]
+            self.assertIsNot(expected, actual, name)
 
     def test_copy_with_data_dimensions(self):
         #
@@ -280,7 +307,9 @@ class BoardCopy(BoardTest):
         #
         for name, board in self.boards:
             board2 = board.copy(with_data=True)
-            self.assertEqual(board2.dimensions, board.dimensions, name)
+            expected = board.dimensions
+            actual = board2.dimensions
+            self.assertEqual(expected, actual, name)
 
     def test_copy_with_data_same_data(self):
         #
@@ -289,7 +318,9 @@ class BoardCopy(BoardTest):
         #
         for name, board in self.boards:
             board2 = board.copy(with_data=True)
-            self.assertSetEqual(set(board.iterdata()), set(board2.iterdata()), name)
+            expected = set(board.iterdata())
+            actual = set(board2.iterdata())
+            self.assertSetEqual(expected, actual, name)
 
     def test_copy_with_data_unlinked(self):
         #
@@ -301,7 +332,9 @@ class BoardCopy(BoardTest):
             obj = object()
             coord = tuple(0 for _ in board2.dimensions)
             board2[coord] = obj
-            self.assertIsNot(board[coord], obj, name)
+            expected = obj
+            actual = board[coord]
+            self.assertIsNot(expected, actual, name)
 
 class BoardClear(BoardTest):
     """Clearing the board removes all the data visible to the local board.
@@ -314,7 +347,9 @@ class BoardClear(BoardTest):
             board.populate(self.test_data)
             self.assertNotEqual(list(board.iterdata()), [], name)
             board.clear()
-            self.assertEqual(list(board.iterdata()), [], name)
+            expected = []
+            actual = list(board.iterdata())
+            self.assertEqual(expected, actual, name)
 
     def test_clear_offset_board(self):
         """Test that an offset board clears its own values only"""
@@ -351,27 +386,39 @@ class BoardItemAccess(BoardTest):
         for name, board in self.boards:
             board.populate(self.test_data)
             coord = tuple(0 for _ in board.dimensions)
-            self.assertEqual(board[coord], self.test_data[0], name)
+
+            expected = self.test_data[0]
+            actual = board[coord]
+            self.assertEqual(expected, actual, name)
 
     def test_getitem_no_value(self):
         for name, board in self.boards:
             board.clear()
             coord = tuple(0 for _ in board.dimensions)
-            self.assertIs(board[coord], Empty, name)
+
+            expected = Empty
+            actual = board[coord]
+            self.assertIs(expected, actual, name)
 
     def test_setitem_value(self):
         for name, board in self.boards:
             coord = tuple(0 for _ in board.dimensions)
             obj = object()
             board[coord] = obj
-            self.assertIs(board[coord], obj, name)
+
+            expected = obj
+            actual = board[coord]
+            self.assertIs(expected, actual, name)
 
     def test_delitem_value(self):
         for name, board in self.boards:
             board.populate(self.test_data)
             coord = tuple(0 for _ in board.dimensions)
             del board[coord]
-            self.assertIs(board[coord], Empty, name)
+
+            expected = Empty
+            actual = board[coord]
+            self.assertIs(expected, actual, name)
 
     def test_out_of_bounds(self):
         """Check that an OutOfBoundsError is raised when the coordinate is outside
@@ -404,7 +451,10 @@ class BoardItemAccess(BoardTest):
             real_coord = tuple(0 if d[-1] == Infinity else len(d) -1 for d in board.dimensions)
             obj = object()
             board[real_coord] = obj
-            self.assertIs(board[coord], obj, name)
+
+            expected = obj
+            actual = board[real_coord]
+            self.assertIs(expected, actual, name)
 
 class BoardSliced(BoardTest):
 
@@ -416,7 +466,10 @@ class BoardSliced(BoardTest):
         for name, board in self.boards:
             coord_slices = tuple(slice(0, None) for _ in board.dimensions)
             board2 = board[coord_slices]
-            self.assertEqual(board2.dimensions, board.dimensions)
+
+            expected = board.dimensions
+            actual = board2.dimensions
+            self.assertEqual(expected, actual, name)
 
     def test_slice_whole_same_data(self):
         #
@@ -444,7 +497,10 @@ class BoardSliced(BoardTest):
             obj = object()
             coord = tuple(0 for _ in board2.dimensions)
             board2[coord] = obj
-            self.assertIs(board[coord], obj, name)
+
+            expected = obj
+            actual = board[coord]
+            self.assertIs(expected, actual, name)
 
     #
     # Test a slice which has a start point but is open-ended
@@ -467,8 +523,9 @@ class BoardSliced(BoardTest):
             #
             # (Infinite dimensions remain infinite)
             #
-            expected_lengths = [len(d) if d is InfiniteDimension else len(d) -1 for d in board.dimensions]
-            self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
+            expected = [len(d) if d is InfiniteDimension else len(d) -1 for d in board.dimensions]
+            actual = [len(d) for d in board2.dimensions]
+            self.assertEqual(expected, actual, name)
 
     def test_slice_part_open_linked(self):
         for name, board in self.boards:
@@ -488,7 +545,10 @@ class BoardSliced(BoardTest):
             coord1 = tuple(i + o for (i, o) in zip(coord2, offset))
             obj = object()
             board2[coord2] = obj
-            self.assertIs(board[coord1], board2[coord2], name)
+
+            expected = board[coord1]
+            actual = board2[coord2]
+            self.assertIs(expected, actual, name)
 
     #
     # Test a slice which has a start and an end point
@@ -512,8 +572,9 @@ class BoardSliced(BoardTest):
             #
             # (Infinite dimensions become finite)
             #
-            expected_lengths = [o1 - o0 for (o0, o1) in zip(offset_start, offset_stop)]
-            self.assertEqual(expected_lengths, [len(d) for d in board2.dimensions], name)
+            expected = [o1 - o0 for (o0, o1) in zip(offset_start, offset_stop)]
+            actual = [len(d) for d in board2.dimensions]
+            self.assertEqual(expected, actual, name)
 
     def test_slice_part_closed_linked(self):
         for name, board in self.boards:
@@ -534,7 +595,10 @@ class BoardSliced(BoardTest):
             coord1 = tuple(i + o for (i, o) in zip(coord2, offset_start))
             obj = object()
             board2[coord2] = obj
-            self.assertIs(board[coord1], board2[coord2], name)
+
+            expected = board[coord1]
+            actual = board2[coord2]
+            self.assertIs(expected, actual, name)
 
 class BoardDunders(BoardTest):
     """Sundry dunder methods such as __eq__, __len__ and so on
@@ -586,16 +650,21 @@ class BoardDunders(BoardTest):
         for name, board in self.boards:
             if board.has_infinite_dimensions:
                 continue
-            expected_length = 1
+
+            expected = 1
             for d in board.dimensions:
-                expected_length *= len(d)
-            self.assertEqual(len(board), expected_length, name)
+                expected *= len(d)
+            actual = len(board)
+            self.assertEqual(expected, actual, name)
 
     def test_len_infinite(self):
         for name, board in self.boards:
             if not board.has_infinite_dimensions:
                 continue
-            self.assertEqual(len(board), Infinity, name)
+
+            expected = Infinity
+            actual = len(board)
+            self.assertEqual(expected, actual, name)
 
     #
     # Not really a dunder method, but masquerading as one
@@ -605,13 +674,19 @@ class BoardDunders(BoardTest):
     def test_lendata_empty(self):
         for name, board in self.boards:
             board.clear()
-            self.assertEqual(board.lendata(), 0, name)
+
+            expected = 0
+            actual = board.lendata()
+            self.assertEqual(expected, actual, name)
 
     def test_lendata_1(self):
         for name, board in self.boards:
             board.clear()
             board[tuple(0 for _ in board.dimensions)] = object()
-            self.assertEqual(board.lendata(), 1, name)
+
+            expected = 1
+            actual = board.lendata()
+            self.assertEqual(expected, actual, name)
 
     def test_lendata_full(self):
         for name, board in self.boards:
@@ -622,7 +697,10 @@ class BoardDunders(BoardTest):
             # runs out of board to populate. The resulting data will
             # be the smaller of the board size and data length
             #
-            self.assertEqual(board.lendata(), min(len(board), len(self.test_data)), name)
+
+            expected = min(len(board), len(self.test_data))
+            actual = board.lendata()
+            self.assertEqual(expected, actual, name)
 
     #
     # A board is considered true if it has at least one position
@@ -647,23 +725,32 @@ class BoardOccupied(BoardTest):
         """
         for name, board in self.boards:
             board.clear()
-            self.assertEqual(board.occupied(), ((), ()), name)
+
+            expected = (), ()
+            actual = board.occupied()
+            self.assertEqual(expected, actual, name)
 
     def test_single_position(self):
         for name, board in self.boards:
+            board.clear()
             min_coord = max_coord = tuple(0 for _ in board.dimensions)
-            expected = min_coord, max_coord
             board[min_coord] = object()
-            self.assertEqual(board.occupied(), expected, name)
+
+            expected = min_coord, max_coord
+            actual = board.occupied()
+            self.assertEqual(expected, actual, name)
 
     def test_square(self):
         for name, board in self.boards:
+            board.clear()
             min_coord = tuple(0 for _ in board.dimensions)
             max_coord = tuple(0 if d.is_infinite else len(d) - 1 for d in board.dimensions)
-            expected = min_coord, max_coord
             board[min_coord] = object()
             board[max_coord] = object()
-            self.assertEqual(board.occupied(), expected, name)
+
+            expected = min_coord, max_coord
+            actual = board.occupied()
+            self.assertEqual(expected, actual, name)
 
 if __name__ == '__main__':
     unittest.main()
