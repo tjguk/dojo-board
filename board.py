@@ -442,8 +442,7 @@ class Board(object):
 
     def neighbours(self, coord):
         """For a given coordinate, yield each of its nearest
-        neighbours along all dimensions, mapping each coordinate to
-        its value.
+        neighbours along all dimensions.
         """
         gcoord = self._normalised_coord(coord)
 
@@ -461,7 +460,27 @@ class Board(object):
         gcoords.remove(coord)
 
         for g in gcoords:
-            yield self._from_global(g), self._data.get(g, Empty)
+            yield self._from_global(g)
+
+    def is_edge(self, coord):
+        """Determine whether a position is on any edge of the board.
+
+        Infinite dimensions only have a lower edge (zero); finite dimensions
+        have a lower and an upper edge.
+        """
+        self._check_in_bounds(coord)
+        dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
+        return any(c in bounds for (c, bounds) in zip(coord, dimension_bounds))
+
+    def edges(self):
+        """Generate coordinates for all positions on the edge of the board
+        """
+        dimension_bounds = list([0, len(d) - 1] if d.is_finite else [0] for d in self.dimensions)
+        for (i, bounds), dimension in zip(enumerate(dimension_bounds), self.dimensions):
+            for b in bounds:
+                continue
+
+        return itertools.product(*dimension_bounds)
 
     def populate(self, iterable):
         """Populate the entire board from an iterable

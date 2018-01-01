@@ -752,5 +752,34 @@ class BoardOccupied(BoardTest):
             actual = board.occupied()
             self.assertEqual(expected, actual, name)
 
+class BoardEdges(BoardTest):
+    """Check the detection and generation of edges
+    """
+    def test_is_edge(self):
+        """Positions are considered on the edge if any of their coordinate elements
+        are at position 0 or if they are at the extreme range of the corresponding
+        finite dimension.
+        """
+        for name, board in self.boards:
+            if all(d.is_finite for d in board.dimensions):
+                length = len(board)
+            elif any(d.is_finite for d in board.dimensions):
+                max_finite_length = max(len(d) for d in board.dimensions if d.is_finite)
+                length = functools.reduce(lambda a, b: a * b, (len(d) if d.is_finite else max_finite_length for d in board.dimensions))
+            else:
+                length = 100
+
+            n = 0
+            for coord in board:
+                if 0 in coord:
+                    self.assertTrue(board.is_edge(coord), name)
+                elif any(c == len(d) - 1 for c, d in zip(coord, board.dimensions)):
+                    self.assertTrue(board.is_edge(coord), name)
+                else:
+                    self.assertFalse(board.is_edge(coord), name)
+
+                n += 1
+                if n > length: break
+
 if __name__ == '__main__':
     unittest.main()
