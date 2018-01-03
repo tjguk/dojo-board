@@ -754,12 +754,12 @@ class BoardOccupied(BoardTest):
 
 class BoardEdges(BoardTest):
     """Check the detection and generation of edges
+
+    Positions are considered on the edge if any of their coordinate elements
+    are at position 0 or if they are at the extreme range of the corresponding
+    finite dimension.
     """
     def test_is_edge(self):
-        """Positions are considered on the edge if any of their coordinate elements
-        are at position 0 or if they are at the extreme range of the corresponding
-        finite dimension.
-        """
         for name, board in self.boards:
             if all(d.is_finite for d in board.dimensions):
                 length = len(board)

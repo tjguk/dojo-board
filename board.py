@@ -472,16 +472,6 @@ class Board(object):
         dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
         return any(c in bounds for (c, bounds) in zip(coord, dimension_bounds))
 
-    def edges(self):
-        """Generate coordinates for all positions on the edge of the board
-        """
-        dimension_bounds = list([0, len(d) - 1] if d.is_finite else [0] for d in self.dimensions)
-        for (i, bounds), dimension in zip(enumerate(dimension_bounds), self.dimensions):
-            for b in bounds:
-                continue
-
-        return itertools.product(*dimension_bounds)
-
     def populate(self, iterable):
         """Populate the entire board from an iterable
 
