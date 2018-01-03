@@ -488,5 +488,23 @@ class Board(object):
         for coord, value in zip(self, iter(iterable)):
             self[coord] = value
 
+    def draw(self):
+        for line in self.drawn():
+            print(line)
+
+    def drawn(self):
+        if len(self.dimensions) != 2 or any(d.is_infinite for d in self.dimensions):
+            raise self.BoardError("Can only draw a finite 2-dimensional board")
+
+        data = dict((coord, str(v)) for (coord, v) in self.iterdata())
+        cell_width = len(max((str(v) for v in data.values()), key=len))
+        corner, hedge, vedge = "+", "-", "|"
+        divider = (corner + (hedge * cell_width)) * len(self.dimensions[0]) + corner
+
+        yield divider
+        for y in self.dimensions[1]:
+            yield vedge + vedge.join(data.get((x, y), "").center(cell_width) for x in self.dimensions[0]) + vedge
+            yield divider
+
 if __name__ == '__main__':
     pass
