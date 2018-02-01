@@ -302,7 +302,7 @@ class Board(object):
             raise InvalidDimensionsError()
         while self._is_in_bounds(coord):
             yield coord
-            coord = tuple(c + v for (c, v) in zip(coord,vector))
+            coord = tuple(c + v for (c, v) in zip(coord, vector))
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.

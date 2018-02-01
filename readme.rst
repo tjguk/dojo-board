@@ -51,7 +51,7 @@ Note that the slice must include all the dimensions of the original
 board, but any of those subdimensions can be of length 1::
 
     b1 = board.Board((9, 9, 9))
-    b2 = b1[:3, :3, 1:1]
+    b2 = b1[:3, :3, :1]
 
 A sentinel value of Empty indicates a position which is not populated
 because it has never had a value, or because its value has been deleted::
@@ -126,6 +126,13 @@ To get a crude view of the contents of the board, use .dump::
     b1.populate("abcdef")
     b1.dump()
 
+To get a grid view of a 2-dimensional board, use .draw::
+
+    b1 = board.Board((3, 3))
+    b1.populate("OX  XXOO ")
+    b1.draw()
+
+
 To populate the board from an arbitrary iterator, use .populate::
 
     def random_letters():
@@ -136,13 +143,65 @@ To populate the board from an arbitrary iterator, use .populate::
     b1 = board.Board((4, 4))
     b1.populate(random_letters())
 
-To clear the board::
+To clear the board, use .clear::
 
     b1 = board.Board((3, 3))
     b1.populate(range(10))
-    len(b1) # 9
     b1.clear()
-    len(b1) # 0
+    list(b1.iterdata()) # []
+
+A board is True if it has any data, False if it has none::
+
+    b1 = board.Board((2, 2))
+    b1.populate("abcd")
+    bool(b1) # True
+    b1.clear()
+    bool(b1) # False
+
+The length of the board is the product of its dimension lengths. If any
+dimension is infinite, the board length is infinte. NB to find the
+amount of data on the board, use lendata::
+
+    b1 = board.Board((4, 4))
+    len(b1) # 16
+    b1.populate("abcd")
+    len(b1) # 16
+    b1.lendata() # 4
+    b2 = board.Board((2, board.Infinity))
+    len(b2) # Infinity
+
+To determine the bounding box of the board which contains data, use .occupied::
+
+    b1 = board.Board((3, 3))
+    b1.populate("abcd")
+    list(c for (c, d) in b1.iterdata()) # [(0, 0), (0, 1), (0, 2), (1, 0)]
+    b1.occupied() # ((0, 0), (1, 2))
+
+To test whether a position is on any edge of the board, use .is_edge::
+
+    b1 = board.Board((3, 3))
+    b1.is_edge((0, 0)) # True
+    b1.is_edge((1, 1)) # False
+    b1.is_edge((2, 0)) # True
+
+To find the immediate on-board neighbours to a position along all dimensions::
+
+    b1 = board.Board((3, 3, 3))
+    list(b1.neighbours((0, 0, 0))) # [(0, 1, 1), (1, 1, 0), (1, 1, 1), (1, 0, 0), (0, 0, 1), (1, 0, 1), (0, 1, 0)]
+
+EXPERIMENTAL: To iterate over all the coords in the rectangular space between
+two corners, use .itercoords::
+
+    b1 = board.Board((3, 3))
+    list(b1.itercoords((0, 0), (1, 1))) # [(0, 0), (0, 1), (1, 0), (1, 1)]
+
+EXPERIMENTAL: To iterate over all the on-board positions from one point in a
+particulate direction, use .iterline::
+
+    b1 = board.Board((4, 4))
+    start_from = 1, 1
+    direction = 1, 1
+    list(b1.iterline(start_from, direction)) # [(1, 1), (2, 2), (3, 3)]
 
 Local and Global coordinates
 ----------------------------
