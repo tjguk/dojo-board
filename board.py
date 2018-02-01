@@ -162,7 +162,7 @@ class Board(object):
     print(b[2, 2])
     """
 
-    class BoardError(BaseException): pass
+    class BoardError(Exception): pass
     class InvalidDimensionsError(BoardError): pass
     class OutOfBoundsError(BoardError): pass
 
