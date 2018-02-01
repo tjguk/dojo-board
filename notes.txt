@@ -1,6 +1,6 @@
 * Thought of having the dimensions passed in a iterables; ie rather than
   passing a dimension size, you pass an iterable. But too inefficient, and 
-  confusing (what if an iterable had all the odd numbers?
+  confusing (what if an iterable had all the odd numbers?)
 
 * Tried having a board slice be less dimensional than its parent; 
   too many corner cases. Just use a slice where one of the dimensions 
