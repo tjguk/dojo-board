@@ -27,6 +27,10 @@ Fairly decent coverage (not actually checked with coverage.py): test.py
 Getting Started
 ---------------
 
+Install with pip::
+
+    pip install board
+
 Absolutely basic usage::
 
     import board
