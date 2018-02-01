@@ -197,7 +197,8 @@ To test whether a position is on any edge of the board, use .is_edge::
 To find the immediate on-board neighbours to a position along all dimensions::
 
     b1 = board.Board((3, 3, 3))
-    list(b1.neighbours((0, 0, 0))) # [(0, 1, 1), (1, 1, 0), (1, 1, 1), (1, 0, 0), (0, 0, 1), (1, 0, 1), (0, 1, 0)]
+    list(b1.neighbours((0, 0, 0)))
+    # [(0, 1, 1), (1, 1, 0), ..., (1, 0, 1), (0, 1, 0)]
 
 EXPERIMENTAL: To iterate over all the coords in the rectangular space between
 two corners, use .itercoords::
@@ -206,12 +207,14 @@ two corners, use .itercoords::
     list(b1.itercoords((0, 0), (1, 1))) # [(0, 0), (0, 1), (1, 0), (1, 1)]
 
 EXPERIMENTAL: To iterate over all the on-board positions from one point in a
-particulate direction, use .iterline::
+particular direction, use .iterline::
 
     b1 = board.Board((4, 4))
     start_from = 1, 1
     direction = 1, 1
     list(b1.iterline(start_from, direction)) # [(1, 1), (2, 2), (3, 3)]
+    direction = 0, 2
+    list(b1.iterline(start_from, direction)) # [(1, 1), (1, 3)]
 
 Properties
 ----------
@@ -232,7 +235,6 @@ To determine whether a board has any infinite or finite dimensions::
     b1.has_infinite_dimensions # False
     b3 = board.Board((board.Infinity, board.Infinity))
     b3.has_finite_dimensions # False
-
 
 Local and Global coordinates
 ----------------------------
