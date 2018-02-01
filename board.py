@@ -508,7 +508,10 @@ class Board(object):
             raise self.BoardError("Can only draw a finite 2-dimensional board")
 
         data = dict((coord, str(v)) for (coord, v) in self.iterdata())
-        cell_width = len(max((str(v) for v in data.values()), key=len))
+        if data:
+            cell_width = len(max(str(v) for v in data.values()), key=len)
+        else:
+            cell_width = 1
         corner, hedge, vedge = "+", "-", "|"
         divider = (corner + (hedge * cell_width)) * len(self.dimensions[0]) + corner
 
