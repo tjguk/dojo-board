@@ -509,7 +509,7 @@ class Board(object):
 
         data = dict((coord, str(v)) for (coord, v) in self.iterdata())
         if data:
-            cell_width = len(max(str(v) for v in data.values()), key=len)
+            cell_width = len(max((str(v) for v in data.values()), key=len))
         else:
             cell_width = 1
         corner, hedge, vedge = "+", "-", "|"
