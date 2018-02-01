@@ -483,6 +483,13 @@ class Board(object):
         dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
         return any(c in bounds for (c, bounds) in zip(coord, dimension_bounds))
 
+    def is_corner(self, coord):
+        """Determine whether a position is on any corner of the board
+        """
+        self._check_in_bounds(coord)
+        dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
+        return all(c in bounds for (c, bounds) in zip(coord, dimension_bounds))
+
     def populate(self, iterable):
         """Populate the entire board from an iterable
 
