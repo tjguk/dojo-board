@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""Board -- an n-dimensional board with support for iteration, containership and slicing
+
+Boards can have any number of dimensions, any of which can be infinite. Boards
+can be sliced [:1, :2], returning a linked-copy, or copied (.copy), returning a snapshot copy.
+
+Boards can be iterated over for coordinates or data (.iterdata). There are also
+convenience functions to determine neighbours across all dimensions (.neighbours),
+the bounding box of occupied data (.occupied), all the coordinates in a space
+in n-dimensions (.itercoords) and other.
+"""
+
 #
 # The semantics of 3.x range are broadly equivalent
 # to xrange in 2.7

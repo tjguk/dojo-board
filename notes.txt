@@ -1,12 +1,15 @@
 * Thought of having the dimensions passed in a iterables; ie rather than
-  passing a dimension size, you pass an iterable. But too inefficient, and 
+  passing a dimension size, you pass an iterable. But too inefficient, and
   confusing (what if an iterable had all the odd numbers?)
 
-* Tried having a board slice be less dimensional than its parent; 
-  too many corner cases. Just use a slice where one of the dimensions 
+* Tried having a board slice be less dimensional than its parent;
+  too many corner cases. Just use a slice where one of the dimensions
   is of size 1
 
 * Also considered a slice with a negative stride, to "flip" the board along
   at least one dimension. Left for now but might come back later. Not clear
   what a cumulative effect would be
-  
+
+* Have dimensions be 1-based and/or allowing mapping between,
+  eg letter (so "A:1") which feels more natural for, eg, Battleships?
+

@@ -14,6 +14,16 @@ This module implements a general-purpose board structure which
 has the functionality needed for a range of purposes, and lends itself
 to being subclassed for those particular needs.
 
+Dependencies
+------------
+
+None - stdlib only
+
+Tests
+-----
+
+Fairly decent coverage (not actually checked with coverage.py): test.py
+
 Getting Started
 ---------------
 
@@ -202,6 +212,27 @@ particulate direction, use .iterline::
     start_from = 1, 1
     direction = 1, 1
     list(b1.iterline(start_from, direction)) # [(1, 1), (2, 2), (3, 3)]
+
+Properties
+----------
+
+To determine whether a board is offset from another (ie the result of a slice)::
+
+    b1 = board.Board((3, 3))
+    b1.is_offset # False
+    b2 = b1[:1, :1]
+    b2.is_offset # True
+
+To determine whether a board has any infinite or finite dimensions::
+
+    b1 = board.Board((3, board.Infinity))
+    b1.has_finite_dimensions # True
+    b1.has_infinite_dimensions # True
+    b2 = board.Board((3, 3))
+    b1.has_infinite_dimensions # False
+    b3 = board.Board((board.Infinity, board.Infinity))
+    b3.has_finite_dimensions # False
+
 
 Local and Global coordinates
 ----------------------------
