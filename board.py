@@ -290,10 +290,10 @@ class Board(object):
     def iterdata(self):
         """Generate the list of data in local coordinate terms.
         """
-            for gcoord, value in self._data.items():
-                lcoord = self._from_global(gcoord)
-                if self._is_in_bounds(lcoord):
-                    yield lcoord, value
+        for gcoord, value in self._data.items():
+            lcoord = self._from_global(gcoord)
+            if self._is_in_bounds(lcoord):
+                yield lcoord, value
 
     def lendata(self):
         """Return the number of data items populated
@@ -513,17 +513,26 @@ class Board(object):
         for coord, value in zip(self, iter(iterable)):
             self[coord] = value
 
-    def draw(self):
-        for line in self.drawn():
+    def draw(self, callback=str):
+        """Draw the board in a very simple text layout
+
+        By default data items are rendered as strings. If a different callback
+        is supplied, it is called with the data item and should return a string.
+
+        The idea is that items can be "hidden" from the board, or rendered
+        differently according to some state. Think of Battleships where the
+        same object can be hidden, revealed, or sunk.
+        """
+        for line in self.drawn(callback):
             print(line)
 
-    def drawn(self):
-        if len(self.dimensions) != 2 or any(d.is_infinite for d in self.dimensions):
+    def drawn(self, callback=str):
+        if len(self.dimensions) != 2 or self.has_infinite_dimensions:
             raise self.BoardError("Can only draw a finite 2-dimensional board")
 
-        data = dict((coord, str(v)) for (coord, v) in self.iterdata())
+        data = dict((coord, callback(v)) for (coord, v) in self.iterdata())
         if data:
-            cell_width = len(max((str(v) for v in data.values()), key=len))
+            cell_width = len(max((v for v in data.values()), key=len))
         else:
             cell_width = 1
         corner, hedge, vedge = "+", "-", "|"
