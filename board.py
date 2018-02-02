@@ -290,17 +290,17 @@ class Board(object):
     def iterdata(self):
         """Generate the list of data in local coordinate terms.
         """
-        for gcoord, value in self._data.items():
-            lcoord = self._from_global(gcoord)
-            if self._is_in_bounds(lcoord):
-                yield lcoord, value
+            for gcoord, value in self._data.items():
+                lcoord = self._from_global(gcoord)
+                if self._is_in_bounds(lcoord):
+                    yield lcoord, value
 
     def lendata(self):
         """Return the number of data items populated
         """
         return sum(1 for _ in self.iterdata())
 
-    def iterline(self, coord, vector):
+    def iterline(self, coord, vector, max_steps=None):
         """Generate coordinates starting at the given one and moving
         in the direction of the vector until the edge of the board is
         reached. The initial coordinate must be on the board. The vector
@@ -311,8 +311,12 @@ class Board(object):
         self._check_in_bounds(coord)
         if len(vector) != len(coord):
             raise InvalidDimensionsError()
+        n_steps = 0
         while self._is_in_bounds(coord):
             yield coord
+            n_steps += 1
+            if max_steps is not None and n_steps == max_steps:
+                break
             coord = tuple(c + v for (c, v) in zip(coord, vector))
 
     def copy(self, with_data=True):
@@ -485,6 +489,9 @@ class Board(object):
 
     def is_corner(self, coord):
         """Determine whether a position is on any corner of the board
+
+        Infinite dimensions only have a lower edge (zero); finite dimensions
+        have a lower and an upper edge.
         """
         self._check_in_bounds(coord)
         dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
