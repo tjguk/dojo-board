@@ -537,6 +537,3 @@ class Board(object):
         for y in self.dimensions[1]:
             yield vedge + vedge.join(data.get((x, y), "").center(cell_width) for x in self.dimensions[0]) + vedge
             yield divider
-
-if __name__ == '__main__':
-    pass
