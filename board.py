@@ -290,10 +290,10 @@ class Board(object):
     def iterdata(self):
         """Generate the list of data in local coordinate terms.
         """
-            for gcoord, value in self._data.items():
-                lcoord = self._from_global(gcoord)
-                if self._is_in_bounds(lcoord):
-                    yield lcoord, value
+        for gcoord, value in self._data.items():
+            lcoord = self._from_global(gcoord)
+            if self._is_in_bounds(lcoord):
+                yield lcoord, value
 
     def lendata(self):
         """Return the number of data items populated
@@ -455,27 +455,22 @@ class Board(object):
         for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(coord1, coord2))):
             yield coord
 
-    def neighbours(self, coord):
+    def neighbours(self, coord, include_diagonals=True):
         """For a given coordinate, yield each of its nearest
-        neighbours along all dimensions.
+        neighbours along all dimensions, including diagonal
+        neighbours if requested (the default)
         """
-        gcoord = self._normalised_coord(coord)
-
-        #
-        # Find the bounding box for all coordinates surrounding coord.
-        # Then produce every coordinate in that space, selecting only
-        # those which fall onto the local board.
-        #
-        mins = [x - 1 for x in coord]
-        maxs = [x + 1 for x in coord]
-        gcoords = set(c for c in itertools.product(*zip(mins, gcoord, maxs)) if self._is_in_bounds(c))
-        #
-        # ... and remove the coordinate itself
-        #
-        gcoords.remove(coord)
-
-        for g in gcoords:
-            yield self._from_global(g)
+        offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
+        for offset in offsets:
+            #
+            # Diagonal offsets have no zero component
+            #
+            if include_diagonals or any(o == 0 for o in offset):
+                neighbour = tuple(c + o for (c, o) in zip(coord, offset))
+                if neighbour == coord:
+                    continue
+                if self._is_in_bounds(neighbour):
+                    yield neighbour
 
     def is_edge(self, coord):
         """Determine whether a position is on any edge of the board.
