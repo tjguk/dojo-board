@@ -2,12 +2,13 @@
 """Board -- an n-dimensional board with support for iteration, containership and slicing
 
 Boards can have any number of dimensions, any of which can be infinite. Boards
-can be sliced [:1, :2], returning a linked-copy, or copied (.copy), returning a snapshot copy.
+can be sliced [:1, :2], returning a linked-copy, or copied (.copy), returning a
+snapshot copy.
 
 Boards can be iterated over for coordinates or data (.iterdata). There are also
 convenience functions to determine neighbours across all dimensions (.neighbours),
 the bounding box of occupied data (.occupied), all the coordinates in a space
-in n-dimensions (.itercoords) and other.
+in n-dimensions (.itercoords) and others.
 """
 
 #
@@ -26,6 +27,12 @@ except NameError:
 import os, sys
 import functools
 import itertools
+import io
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = None
 
 class _Infinity(int):
 
@@ -149,6 +156,28 @@ class _InfiniteDimension(BaseDimension):
 
 InfiniteDimension = _InfiniteDimension()
 
+def text_painter(obj, size, font_name="arial"):
+    cell_width, cell_height = size
+    #
+    # Very roughly, one point is three quarters of
+    # a pixel. We pick a point size which will fill
+    # the smaller edge of the cell (if it's not square)
+    #
+    n_points = round(min(size) * 0.75)
+    #
+    # Create a new off-white image to hold the
+    # text. Draw the text into it in blue, centred,
+    # and return the resulting image
+    #
+    image = Image.new("RGBA", size, (255, 255, 255, 0))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("%s.ttf" % font_name, n_points)
+    text = str(obj)
+    text_width, text_height = font.getsize(text)
+    text_offset = (cell_width - text_width) / 2, (cell_height - text_height) / 2
+    draw.text(text_offset, text, font=font, fill="#0000ff")
+    return image
+
 class Board(object):
     """Board - represent a board of n dimensions, each possibly infinite.
 
@@ -183,6 +212,7 @@ class Board(object):
         #
         self._data = {} if _global_board is None else _global_board
         self._offset_from_global = _offset_from_global or tuple(0 for _ in self.dimensions)
+        self._paint_cache = {}
 
     def __repr__(self):
         return "<{} ({})>".format(
@@ -537,6 +567,66 @@ class Board(object):
         for y in self.dimensions[1]:
             yield vedge + vedge.join(data.get((x, y), "").center(cell_width) for x in self.dimensions[0]) + vedge
             yield divider
+
+    def painted(self, callback, size):
+        if not Image:
+            raise NotImplementedError("Painting is not available unless Pillow is installed")
+        if len(self.dimensions) != 2 or self.has_infinite_dimensions:
+            raise self.BoardError("Can only paint a finite 2-dimensional board")
+
+        n_wide = len(self.dimensions[0])
+        n_high = len(self.dimensions[1])
+        image = Image.new("RGBA", size)
+        h_border = image.height / 80
+        v_border = image.width / 80
+        draw = ImageDraw.Draw(image)
+        drawable_width = image.width - (1 + n_wide) * h_border
+        cell_width = round(drawable_width / n_wide)
+        drawable_height = image.height - (1 + n_high) * v_border
+        cell_height = round(drawable_height / n_high)
+
+        for (x, y) in self:
+            obj = self[x, y]
+            #
+            # If the cell is empty: draw nothing
+            # Try to fetch the relevant sprite from the cache
+            # If the sprite is not cached, generate and cache it
+            # If the sprite is larger than the cell, crop it around its centre
+            #
+            if obj is Empty:
+                sprite = None
+            else:
+                try:
+                    sprite = self._paint_cache[obj]
+                except KeyError:
+                    sprite = self._paint_cache[obj] = callback(obj, (cell_width, cell_height))
+                if sprite.width > cell_width or sprite.height > cell_height:
+                    box_x = (sprite.width - cell_width) / 2
+                    box_y = (sprite.height - cell_height) / 2
+                    sprite = sprite.crop((box_x, box_y, cell_width, cell_height))
+
+            #
+            # Draw the cell and the sprite within it
+            #
+            cell_x = round(h_border + ((cell_width + h_border) * x))
+            cell_y = round(v_border + ((cell_height + v_border) * y))
+            draw.rectangle((cell_x, cell_y, cell_x + cell_width, cell_y + cell_height), fill="#ffffff")
+            if sprite:
+                sprite_x_offset = round((cell_width - sprite.width) / 2)
+                sprite_y_offset = round((cell_height - sprite.height) / 2)
+                image.alpha_composite(sprite, (cell_x + sprite_x_offset, cell_y + sprite_y_offset))
+
+        #
+        # Return the whole image as PNG-encoded bytes
+        #
+        f = io.BytesIO()
+        image.save(f, "PNG")
+        return f.getvalue()
+
+
+    def paint(self, filepath, callback=text_painter, size=(800, 800)):
+        with open(filepath, "wb") as f:
+            f.write(self.painted(callback, size))
 
 if __name__ == '__main__':
     pass
