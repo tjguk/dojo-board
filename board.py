@@ -219,7 +219,7 @@ class Board(object):
         #
         self._data = {} if _global_board is None else _global_board
         self._offset_from_global = _offset_from_global or tuple(0 for _ in self.dimensions)
-        self._paint_cache = {}
+        self._sprite_cache = {}
 
     def __repr__(self):
         return "<{} ({})>".format(
@@ -627,9 +627,9 @@ class Board(object):
                 sprite = None
             else:
                 try:
-                    sprite = self._paint_cache[obj]
+                    sprite = self._sprite_cache[obj]
                 except KeyError:
-                    sprite = self._paint_cache[obj] = callback(obj, (cell_w, cell_h))
+                    sprite = self._sprite_cache[obj] = callback(obj, (cell_w, cell_h))
                 if sprite.width > cell_w or sprite.height > cell_h:
                     box_x = (sprite.width - cell_w) / 2
                     box_y = (sprite.height - cell_h) / 2
