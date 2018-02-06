@@ -165,25 +165,51 @@ def _centred_coord(outer_size, inner_size):
     inner_w, inner_h = inner_size
     return round((outer_w - inner_w) / 2), round((outer_h - inner_h) / 2)
 
-def text_painter(obj, size, font_name="arial", colour="#0000ff"):
-    #
-    # Very roughly, one point is three quarters of
-    # a pixel. We pick a point size which will fill
-    # the smaller edge of the cell (if it's not square)
-    #
-    point_size = round(min(size) * 0.75)
 
-    #
-    # Create a new transparent image to hold the
-    # text. Draw the text into it in blue, centred,
-    # using the font requested, and return the resulting image
-    #
-    image = Image.new("RGBA", size, (255, 255, 255, 0))
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype("%s.ttf" % font_name, point_size)
-    text = str(obj)
-    draw.text(_centred_coord(size, font.getsize(text)), text, font=font, fill=colour)
-    return image
+def text_sprite(font_name="arial", colour="#0000ff"):
+    """Text sprite generator callback from Board.paint
+
+    Convert the object to text of approximately the right size for
+    the cell being painted. Typically this will be used for one or
+    two letter objects, but it will work for any object which can
+    meaningfully be converted to text
+    """
+
+    def _text_sprite(obj, size):
+        #
+        # Very roughly, one point is three quarters of
+        # a pixel. We pick a point size which will fill
+        # the smaller edge of the cell (if it's not square)
+        #
+        point_size = round(min(size) * 0.75)
+
+        #
+        # Create a new transparent image to hold the
+        # text. Draw the text into it in blue, centred,
+        # using the font requested, and return the resulting image
+        #
+        image = Image.new("RGBA", size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype("%s.ttf" % font_name, point_size)
+        text = str(obj)
+        draw.text(_centred_coord(size, font.getsize(text)), text, font=font, fill=colour)
+        return image
+
+    return _text_sprite
+
+def imagefile_sprite(directory=".", extension=".png"):
+    """Image sprite generator callback for Board.paint
+
+    Given the text form of an object, look for an image file in the
+    stated directory [default: current] and return it, scaled to size.
+    """
+
+    def _imagefile_sprite(obj, size):
+        image = Image.open(os.path.join(directory, "%s%s" % (obj, extension)))
+        image.thumbnail(size)
+        return image
+
+    return _imagefile_sprite
 
 class Board(object):
     """Board - represent a board of n dimensions, each possibly infinite.
@@ -195,7 +221,7 @@ class Board(object):
 
     b = Board((4, 4))
     b[2, 2] = "*"
-    print(b[2, 2])
+    b.draw()
     """
 
     class BoardError(Exception): pass
@@ -591,7 +617,7 @@ class Board(object):
             yield vedge + vedge.join(data.get((x, y), "").center(cell_w) for x in self.dimensions[0]) + vedge
             yield divider
 
-    def painted(self, callback, size, background_colour):
+    def painted(self, callback, size, background_colour, use_borders):
         if not Image:
             raise NotImplementedError("Painting is not available unless Pillow is installed")
         if len(self.dimensions) != 2 or self.has_infinite_dimensions:
@@ -606,8 +632,11 @@ class Board(object):
         n_wide = len(self.dimensions[0])
         n_high = len(self.dimensions[1])
         image = Image.new("RGBA", size)
-        h_border = image.height / 80
-        v_border = image.width / 80
+        if use_borders:
+            h_border = image.height / 80
+            v_border = image.width / 80#
+        else:
+            h_border = v_border = 0
         draw = ImageDraw.Draw(image)
         drawable_w = image.width - (1 + n_wide) * h_border
         cell_w = round(drawable_w / n_wide)
@@ -636,7 +665,7 @@ class Board(object):
                     sprite = sprite.crop((box_x, box_y, cell_w, cell_h))
 
             #
-            # Draw the cell and the sprite within it
+            # Draw the cell and any sprite within it
             #
             cell_x = round(h_border + ((cell_w + h_border) * x))
             cell_y = round(v_border + ((cell_h + v_border) * y))
@@ -652,10 +681,9 @@ class Board(object):
         image.save(f, "PNG")
         return f.getvalue()
 
-
-    def paint(self, filepath, callback=text_painter, size=(800, 800), background_colour="#ffffcc"):
+    def paint(self, filepath, callback=text_sprite(), size=(800, 800), background_colour="#ffffcc", use_borders=True):
         with open(filepath, "wb") as f:
-            f.write(self.painted(callback, size, background_colour))
+            f.write(self.painted(callback, size, background_colour, use_borders))
 
 if __name__ == '__main__':
     pass
