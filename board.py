@@ -171,7 +171,8 @@ def text_painter(obj, size, font_name="arial", colour="#0000ff"):
     # a pixel. We pick a point size which will fill
     # the smaller edge of the cell (if it's not square)
     #
-    n_points = round(min(size) * 0.75)
+    point_size = round(min(size) * 0.75)
+
     #
     # Create a new transparent image to hold the
     # text. Draw the text into it in blue, centred,
@@ -179,7 +180,7 @@ def text_painter(obj, size, font_name="arial", colour="#0000ff"):
     #
     image = Image.new("RGBA", size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype("%s.ttf" % font_name, n_points)
+    font = ImageFont.truetype("%s.ttf" % font_name, point_size)
     text = str(obj)
     draw.text(_centred_coord(size, font.getsize(text)), text, font=font, fill=colour)
     return image
@@ -367,6 +368,9 @@ class Board(object):
         """
         for coord in self.iterline(coord, vector, max_steps):
             yield self[coord]
+
+    def itercorners(self):
+        return itertools.product(*list((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions))
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
