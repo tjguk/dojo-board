@@ -63,6 +63,7 @@ class _Empty(object):
 
     def __bool__(self):
         return False
+    __nonzero__ = __bool__
 
 Empty = _Empty()
 
@@ -233,6 +234,10 @@ class Board(object):
         """
         if not dimension_sizes:
             raise self.InvalidDimensionsError("The board must have at least one dimension")
+        try:
+            iter(dimension_sizes)
+        except TypeError:
+            raise self.InvalidDimensionsError("Dimensions must be iterable (eg a tuple), not {}".format(type(dimension_sizes).__name__))
         if any(d <= 0 for d in dimension_sizes):
             raise self.InvalidDimensionsError("Each dimension must be >= 1")
         self.dimensions = [InfiniteDimension if size == Infinity else Dimension(size) for size in dimension_sizes]
@@ -396,7 +401,7 @@ class Board(object):
             yield self[coord]
 
     def itercorners(self):
-        return itertools.product(*list((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions))
+        return itertools.product(*list((0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions))
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
@@ -528,26 +533,24 @@ class Board(object):
         for coord in (coord1, coord2):
             self._check_in_bounds(coord)
 
-        #
-        # TODO: what happens if the coords are reversed?
-        #
-        for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(coord1, coord2))):
+        for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(*sorted([coord1, coord2])))):
             yield coord
 
     def neighbours(self, coord, include_diagonals=True):
-        """For a given coordinate, yield each of its nearest
-        neighbours along all dimensions, including diagonal
-        neighbours if requested (the default)
+        """Iterate over all the neighbours of a coordinate
+
+        For a given coordinate, yield each of its nearest neighbours along
+        all dimensions, including diagonal neighbours if requested (the default)
         """
         offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
         for offset in offsets:
+            if all(o == 0 for o in offsets):
+                continue
             #
             # Diagonal offsets have no zero component
             #
             if include_diagonals or any(o == 0 for o in offset):
                 neighbour = tuple(c + o for (c, o) in zip(coord, offset))
-                if neighbour == coord:
-                    continue
                 if self._is_in_bounds(neighbour):
                     yield neighbour
 
