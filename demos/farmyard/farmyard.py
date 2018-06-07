@@ -15,5 +15,5 @@ def random_population(data):
 os.startfile("farmyard.html")
 while True:
     farm.populate(random_population(animals))
-    farm.paint("farmyard.png", board.imagefile_painter(".", ".png"))
+    farm.paint("farmyard.png", board.imagefile_sprite(".", ".png"), use_borders=False)
     time.sleep(2)

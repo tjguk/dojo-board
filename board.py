@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8-*- # Encoding cookie added by Mu Editor
+
 """Board -- an n-dimensional board with support for iteration, containership and slicing
 
 Boards can have any number of dimensions, any of which can be infinite. Boards
@@ -11,6 +12,7 @@ the bounding box of occupied data (.occupied), all the coordinates in a space
 in n-dimensions (.itercoords) and others.
 """
 
+# testing
 #
 # The semantics of 3.x range are broadly equivalent
 # to xrange in 2.7
@@ -401,7 +403,8 @@ class Board(object):
             yield self[coord]
 
     def itercorners(self):
-        return itertools.product(*list((0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions))
+        dimension_bounds = [(0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions]
+        return itertools.product(*dimension_bounds)
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
@@ -590,7 +593,7 @@ class Board(object):
         for coord, value in zip(self, iter(iterable)):
             self[coord] = value
 
-    def draw(self, callback=str):
+    def draw(self, callback=str, use_borders=True):
         """Draw the board in a very simple text layout
 
         By default data items are rendered as strings. If a different callback
@@ -600,10 +603,10 @@ class Board(object):
         differently according to some state. Think of Battleships where the
         same object can be hidden, revealed, or sunk.
         """
-        for line in self.drawn(callback):
+        for line in self.drawn(callback, use_borders):
             print(line)
 
-    def drawn(self, callback=str):
+    def drawn(self, callback=str, use_borders=True):
         if len(self.dimensions) != 2 or self.has_infinite_dimensions:
             raise self.BoardError("Can only draw a finite 2-dimensional board")
 
@@ -612,13 +615,16 @@ class Board(object):
             cell_w = len(max((v for v in data.values()), key=len))
         else:
             cell_w = 1
-        corner, hedge, vedge = "+", "-", "|"
+        if use_borders:
+            corner, hedge, vedge = "+", "-", "|"
+        else:
+            corner = hedge = vedge = ""
         divider = (corner + (hedge * cell_w)) * len(self.dimensions[0]) + corner
 
-        yield divider
+        if use_borders: yield divider
         for y in self.dimensions[1]:
             yield vedge + vedge.join(data.get((x, y), "").center(cell_w) for x in self.dimensions[0]) + vedge
-            yield divider
+            if use_borders: yield divider
 
     def painted(self, callback, size, background_colour, use_borders):
         if not Image:
@@ -687,6 +693,12 @@ class Board(object):
     def paint(self, filepath, callback=text_sprite(), size=(800, 800), background_colour="#ffffcc", use_borders=True):
         with open(filepath, "wb") as f:
             f.write(self.painted(callback, size, background_colour, use_borders))
+
+def cornerposts(dimensions):
+    for d in dimensions:
+        yield 0
+        if d.is_finite:
+            yield len(d)
 
 if __name__ == '__main__':
     pass
