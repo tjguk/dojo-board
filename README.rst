@@ -273,10 +273,25 @@ to render ASCII art, pass draw_borders=False:
         b1[coord] = "*"
     b1.draw(use_borders=False)
 
-To render to an image using Pillow (which isn't a hard dependency) use paint::
+To render to an image using Pillow (which isn't a hard dependency) use paint.
+The default renderer treats the data items as text and renders then, scaled
+to fit, into each cell. This works, obviously, for things like Noughts & Crosses
+assuming that you store something like "O" and "X". But it also works for
+word searches and even simple battleships where the data items are objects
+whose __str__ returns blank (for undiscovered), "+" for a single hit, and "*"
+for a destroyed vessel::
 
+    b1 = board.Board((3, 3))
+    b1[0, 0] = "X"
+    b1[1, 1] = "O"
+    b1[0, 2] = "X"
+    b1.paint("board.png")
+    # ... and now look at board.png
 
-
+The text painting is achieved internally by means of a callback called
+text_sprite. An alternative ready-cooked callback for paint() is
+imagefile_sprite. This looks for a .png file in the current directory
+(or another; you can specify).
 
 Local and Global coordinates
 ----------------------------
