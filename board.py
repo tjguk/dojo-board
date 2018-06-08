@@ -160,7 +160,7 @@ class _InfiniteDimension(BaseDimension):
 InfiniteDimension = _InfiniteDimension()
 
 def _centred_coord(outer_size, inner_size):
-    """Give an outer and an inner size, calculate the top-left coordinates
+    """Given an outer and an inner size, calculate the top-left coordinates
     which the inner image should position at to be centred within the outer
     image
     """
@@ -316,6 +316,8 @@ class Board(object):
             outf.write(line + "\n")
 
     def _is_in_bounds(self, coord):
+        """Is a given coordinate within the space of this board?
+        """
         if len(coord) != len(self.dimensions):
             raise self.InvalidDimensionsError(
                 "Coordinate {} has {} dimensions; the board has {}".format(coord, len(coord), len(self.dimensions)))
@@ -323,15 +325,22 @@ class Board(object):
         return all(c in d for (c, d) in zip(coord, self.dimensions))
 
     def _check_in_bounds(self, coord):
+        """If a given coordinate is not within the space of this baord, raise
+        an OutOfBoundsError
+        """
         if not self._is_in_bounds(coord):
             raise self.OutOfBoundsError("{} is out of bounds for {}".format(coord, self))
 
     def __contains__(self, coord):
+        """Implement <coord> in <board>
+        """
         return self._is_in_bounds(coord)
 
     def __iter__(self):
-        """Iterator over all combinations of coordinates. If you need
-        data, use iterdata.
+        """Implement for <coord> in <board>
+
+        Iterate over all combinations of coordinates. If you need data,
+        use iterdata().
         """
         # If all the dimensions are finite (the simplest and most common
         # situation) just use itertools.product.
@@ -358,7 +367,9 @@ class Board(object):
         return tuple(c - o for (c, o) in zip(coord, self._offset_from_global))
 
     def iterdata(self):
-        """Generate the list of data in local coordinate terms.
+        """Implement: for (<coord>, <data>) in <board>
+
+        Generate the list of data in local coordinate terms.
         """
         for gcoord, value in self._data.items():
             lcoord = self._from_global(gcoord)
@@ -526,6 +537,13 @@ class Board(object):
         min_coord = tuple(min(coord) for coord in zip(*coords_in_use))
         max_coord = tuple(max(coord) for coord in zip(*coords_in_use))
         return min_coord, max_coord
+
+    def occupied_board(self):
+        """Return a sub-board containing only the portion of this board
+        which contains data.
+        """
+        (x0, y0), (x1, y1) = self.occupied()
+        return self[x0:x1+1, y0:y1+1]
 
     def itercoords(self, coord1, coord2):
         """Iterate over the coordinates in between the two coordinates.

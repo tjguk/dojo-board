@@ -100,7 +100,6 @@ To see coordinates with their data items, use iterdata::
     for coord, data in b1.iterdata():
         print(coord, "=>", data)
 
-
 To read, write and empty the data at a board position, use indexing::
 
     b1 = board.Board((3, 3))
@@ -133,19 +132,6 @@ each data item is equal::
     b2 = board.Board((2, 2))
     b2.populate("abcdef")
     b1 == b2 # False
-
-To get a crude view of the contents of the board, use .dump::
-
-    b1 = board.Board((3, 3))
-    b1.populate("abcdef")
-    b1.dump()
-
-To get a grid view of a 2-dimensional board, use .draw::
-
-    b1 = board.Board((3, 3))
-    b1.populate("OX  XXOO ")
-    b1.draw()
-
 
 To populate the board from an arbitrary iterator, use .populate::
 
@@ -191,6 +177,15 @@ To determine the bounding box of the board which contains data, use .occupied::
     list(c for (c, d) in b1.iterdata()) # [(0, 0), (0, 1), (0, 2), (1, 0)]
     b1.occupied() # ((0, 0), (1, 2))
 
+For the common case of slicing a board around its occupied space,
+use .occupied_board::
+
+    b1 = board.Board((3, 3))
+    b1.populate("abcd")
+    b1.draw()
+    b2 = b1.occupied_board()
+    b2.draw()
+
 To test whether a position is on any edge of the board, use .is_edge::
 
     b1 = board.Board((3, 3))
@@ -204,13 +199,13 @@ To find the immediate on-board neighbours to a position along all dimensions::
     list(b1.neighbours((0, 0, 0)))
     # [(0, 1, 1), (1, 1, 0), ..., (1, 0, 1), (0, 1, 0)]
 
-EXPERIMENTAL: To iterate over all the coords in the rectangular space between
+To iterate over all the coords in the rectangular space between
 two corners, use .itercoords::
 
     b1 = board.Board((3, 3))
     list(b1.itercoords((0, 0), (1, 1))) # [(0, 0), (0, 1), (1, 0), (1, 1)]
 
-EXPERIMENTAL: To iterate over all the on-board positions from one point in a
+To iterate over all the on-board positions from one point in a
 particular direction, use .iterline::
 
     b1 = board.Board((4, 4))
@@ -219,6 +214,19 @@ particular direction, use .iterline::
     list(b1.iterline(start_from, direction)) # [(1, 1), (2, 2), (3, 3)]
     direction = 0, 2
     list(b1.iterline(start_from, direction)) # [(1, 1), (1, 3)]
+
+or .iterlinedata to generate the data at each point::
+
+    b1 = board.Board((3, 3))
+    b1.populate("ABCDEFGHJ")
+    start_from = 1, 1
+    direction = 1, 0
+    list(b1.iterlinedata(start_from, direction)) # ['A', 'D', 'G']
+
+To iterate over the corners of the board, use .itercorners::
+
+    b1 = board.Board((3, 3))
+    list(b1.itercorners()) # [(0, 0), (0, 2), (2, 0), (2, 2)]
 
 Properties
 ----------
@@ -239,6 +247,36 @@ To determine whether a board has any infinite or finite dimensions::
     b1.has_infinite_dimensions # False
     b3 = board.Board((board.Infinity, board.Infinity))
     b3.has_finite_dimensions # False
+
+Display the Board
+-----------------
+
+To get a crude view of the contents of the board, use .dump::
+
+    b1 = board.Board((3, 3))
+    b1.populate("abcdef")
+    b1.dump()
+
+To get a grid view of a 2-dimensional board, use .draw::
+
+    b1 = board.Board((3, 3))
+    b1.populate("OX  XXOO ")
+    b1.draw()
+
+If you don't want the borders draw, eg because you're using the board
+to render ASCII art, pass draw_borders=False:
+
+    b1 = board.Board((8, 8))
+    for coord in b1.iterline((0, 0), (1, 1)):
+        b1[coord] = "*"
+    for coord in b1.iterline((7, 0), (-1, 1)):
+        b1[coord] = "*"
+    b1.draw(use_borders=False)
+
+To render to an image using Pillow (which isn't a hard dependency) use paint::
+
+
+
 
 Local and Global coordinates
 ----------------------------
