@@ -413,9 +413,11 @@ class Board(object):
         for coord in self.iterline(coord, vector, max_steps):
             yield self[coord]
 
-    def itercorners(self):
+    def corners(self):
         dimension_bounds = [(0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions]
-        return itertools.product(*dimension_bounds)
+        return list(itertools.product(*dimension_bounds))
+
+    #~ def
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
@@ -451,8 +453,13 @@ class Board(object):
             raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
 
     def __setitem__(self, coord, value):
-        coord = self._normalised_coord(coord)
-        self._data[coord] = value
+        if all(isinstance(c, (int, long)) for c in coord):
+            coord = self._normalised_coord(coord)
+            self._data[coord] = value
+        #~ elif all(isinstance(i, (int, long, slice)) for i in item):
+            #~ return self._slice(item)
+        else:
+            raise TypeError("{} can only be indexed by int or slice".format(self.__class__.__name__))
 
     def __delitem__(self, coord):
         coord = self._normalised_coord(coord)
@@ -595,20 +602,30 @@ class Board(object):
         dimension_bounds = ((0, len(d) - 1 if d.is_finite else 0) for d in self.dimensions)
         return all(c in bounds for (c, bounds) in zip(coord, dimension_bounds))
 
-    def populate(self, iterable):
-        """Populate the entire board from an iterable
+    def populate(self, iterable, coord_iterable=None):
+        """Populate all or part of the board from an iterable
 
-        The iterable can be shorter or longer than the board. The two
-        are zipped together so the population will stop when the shorter
-        is exhausted.
+        The population iterable can be shorter or longer than the board
+        iterable. The two are zipped together so the population will stop
+        when the shorter is exhausted.
+
+        If no iterable is supplied for cooordinates, the whole board is
+        populated.
 
         This is a convenience method both to assist testing and also for,
         eg, games like Boggle or word-searches where the board must start
         filled with letters etc. If the data needs to be, eg, a random or
         weighted choice then this should be implemented in the iterator
         supplied.
+
+        With a coordinate iterable this could be used, for example, to combine
+        iterline and a list of objects to populate data on a Battleships board.
         """
-        for coord, value in zip(self, iter(iterable)):
+        if coord_iterable is None:
+            board_iter = iter(self)
+        else:
+            board_iter = iter(coord_iterable)
+        for coord, value in zip(board_iter, iter(iterable)):
             self[coord] = value
 
     def draw(self, callback=str, use_borders=True):
@@ -661,7 +678,7 @@ class Board(object):
         image = Image.new("RGBA", size)
         if use_borders:
             h_border = image.height / 80
-            v_border = image.width / 80#
+            v_border = image.width / 80
         else:
             h_border = v_border = 0
         draw = ImageDraw.Draw(image)

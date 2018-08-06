@@ -47,7 +47,9 @@ Usage
 
 Board is an n-dimensional board, any of which dimensions can be of
 infinite size. (So if you have, say, 3 infinite dimensions, you have
-the basis for a Minecraft layout). Dimensions are zero-based.
+the basis for a Minecraft layout). Dimensions are zero-based and
+negative indexes operate as they usually do in Python: working from
+the end of the dimension backwards.
 
 Cells on the board are accessed by item access, eg board[1, 2] or
 landscape[1, 1, 10].
@@ -109,6 +111,9 @@ To read, write and empty the data at a board position, use indexing::
     b1[0, 0] = "*"
     print(b1[0, 0]) # "*"
 
+    b1[-1, -1] = "*"
+    print(b1[2, 2]) # "*"
+
     del b1[0, 0]
     print(b1[0, 0]) # <Empty>
 
@@ -159,7 +164,7 @@ A board is True if it has any data, False if it has none::
     bool(b1) # False
 
 The length of the board is the product of its dimension lengths. If any
-dimension is infinite, the board length is infinte. NB to find the
+dimension is infinite, the board length is infinite. NB to find the
 amount of data on the board, use lendata::
 
     b1 = board.Board((4, 4))
@@ -223,10 +228,19 @@ or .iterlinedata to generate the data at each point::
     direction = 1, 0
     list(b1.iterlinedata(start_from, direction)) # ['A', 'D', 'G']
 
-To iterate over the corners of the board, use .itercorners::
+Both iterline and iterdata can take a maximum number of steps, eg for
+games like Connect 4 or Battleships::
+
+    b1 = board.Board((8, 8))
+    #
+    # Draw a Battleship
+    #
+    b1.populate("BBBB", b1.iterline((2, 2), (1, 0)))
+
+To iterate over the corners of the board, use .corners::
 
     b1 = board.Board((3, 3))
-    list(b1.itercorners()) # [(0, 0), (0, 2), (2, 0), (2, 2)]
+    corners() # [(0, 0), (0, 2), (2, 0), (2, 2)]
 
 Properties
 ----------
