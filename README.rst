@@ -294,8 +294,8 @@ To get a grid view of a 2-dimensional board, use .draw::
     b1.populate("OX  XXOO ")
     b1.draw()
 
-If you don't want the borders draw, eg because you're using the board
-to render ASCII art, pass draw_borders=False:
+If you don't want the borders drawn, eg because you're using the board
+to render ASCII art, pass draw_borders=False::
 
     b1 = board.Board((8, 8))
     for coord in b1.iterline((0, 0), (1, 1)):
