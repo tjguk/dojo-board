@@ -417,8 +417,6 @@ class Board(object):
         dimension_bounds = [(0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions]
         return list(itertools.product(*dimension_bounds))
 
-    #~ def
-
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
         If with_data is truthy, populate with the current data.
@@ -581,6 +579,44 @@ class Board(object):
                 neighbour = tuple(c + o for (c, o) in zip(coord, offset))
                 if self._is_in_bounds(neighbour):
                     yield neighbour
+
+    def runs_of_n(self, n, ignore_reversals=True):
+        """Iterate over all dimensions to yield runs of length n
+
+        Yield each run of n cells as a tuple of coordinates and a tuple
+        of data. If ignore_reversals is True (the default) then don't
+        yield the same line in the opposite direction.
+
+        This is useful for, eg, noughts and crosses, battleship or connect 4
+        where the game engine has to detect a line of somethings in a row.
+        """
+        all_zeroes = tuple(0 for _ in self.dimensions)
+        all_offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
+        offsets = [o for o in all_offsets if o != all_zeroes]
+
+        already_seen = set()
+        #
+        # This is brute force: running for every cell and looking in every
+        # direction. We check later whether we've run off the board (as
+        # the resulting line will fall short). We might do some kind of
+        # pre-check here, but we have to check against every direction
+        # of every dimension, which would complicate this code
+        #
+        for cell in iter(self):
+            for direction in offsets:
+                line = tuple(self.iterline(cell, direction, n))
+                if len(line) == n:
+                    if line in already_seen:
+                        continue
+                    already_seen.add(line)
+                    #
+                    # Most of the time you don't want the same line twice,
+                    # once in each direction.
+                    #
+                    if ignore_reversals:
+                        already_seen.add(line[::-1])
+
+                    yield line, [self[c] for c in line]
 
     def is_edge(self, coord):
         """Determine whether a position is on any edge of the board.

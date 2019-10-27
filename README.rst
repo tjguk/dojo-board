@@ -237,6 +237,23 @@ games like Connect 4 or Battleships::
     #
     b1.populate("BBBB", b1.iterline((2, 2), (1, 0)))
 
+As a convenience for games which need to look for a run of so many
+things, the .run_of_n method combines iterline with data to yield
+every possible line on the board which is of a certain length along
+with its data::
+
+    b1 = board.Board((3, 3))
+    b1[0, 0] = 'X'
+    b1[1, 1] = 'O'
+    b1[0, 1] = 'X'
+    for line, data in b1.runs_of_n(3):
+        if all(d == "O" for d in data):
+            print("O wins")
+            break
+        elif all(d == "X" for d in data):
+            print("X wins")
+            break
+
 To iterate over the corners of the board, use .corners::
 
     b1 = board.Board((3, 3))
