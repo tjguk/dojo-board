@@ -6,15 +6,15 @@ history = ''
 
 setup(
     name='board',
-    version='0.0.0.post0',
+    version='1.0',
     description='Standard Board mechanism for Dojo tasks',
     long_description=readme + '\n\n' + history,
     author='Tim Golden',
     author_email='mail@timgolden.me.uk',
-    maintainer='Thomas Grainger',
-    maintainer_email='board@graingert.co.uk',
+    maintainer='Tim Golden',
+    maintainer_email='mail@timgolden.me.uk',
     license="unlicensed",
-    url='https://github.com/graingert/dojo-board',
+    url='https://github.com/tjguk/dojo-board',
     py_modules=['board'],
     classifiers=[
         "Environment :: Console",
