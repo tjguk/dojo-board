@@ -254,6 +254,16 @@ class Board(object):
         self._offset_from_global = _offset_from_global or tuple(0 for _ in self.dimensions)
         self._sprite_cache = {}
 
+    @classmethod
+    def from_dict(cls, dictlike):
+        """Build a board from an object which can be passed to a dict constructor
+        """
+        _dict = dict(dictlike)
+        coords = _dict.keys()
+        occupied = cls._occupied_coords(coords)
+
+        return cls()
+
     def __repr__(self):
         return "<{} ({})>".format(
             self.__class__.__name__,
@@ -535,13 +545,17 @@ class Board(object):
                 max(c[n_dimension] for c in data_in_use)
             )
 
+    @staticmethod
+    def _occupied_coords(coords_in_use):
+        min_coord = tuple(min(coord) for coord in zip(*coords_in_use))
+        max_coord = tuple(max(coord) for coord in zip(*coords_in_use))
+        return min_coord, max_coord
+
     def occupied(self):
         """Return the bounding box of space occupied
         """
         coords_in_use = [coord for coord, _ in self.iterdata()]
-        min_coord = tuple(min(coord) for coord in zip(*coords_in_use))
-        max_coord = tuple(max(coord) for coord in zip(*coords_in_use))
-        return min_coord, max_coord
+        return self._occupied_coords(coords_in_use)
 
     def occupied_board(self):
         """Return a sub-board containing only the portion of this board
