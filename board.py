@@ -573,9 +573,9 @@ class Board(object):
             if all(o == 0 for o in offset):
                 continue
             #
-            # Diagonal offsets have no zero component
+            # Diagonal offsets change in more than one dimension.
             #
-            if include_diagonals or any(o == 0 for o in offset):
+            if include_diagonals or sum(abs(o) for o in offset) == 1:
                 neighbour = tuple(c + o for (c, o) in zip(coord, offset))
                 if self._is_in_bounds(neighbour):
                     yield neighbour
