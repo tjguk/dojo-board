@@ -781,5 +781,64 @@ class BoardEdges(BoardTest):
                 n += 1
                 if n > length: break
 
+
+class BoardNeighbours(BoardTest):
+    """Check that neighbours work correctly
+
+    Neighbours should show all immediately adjacent coordinates which are on the board
+    """
+    def test_neighbours_2d_corner(self):
+        """Find neighbours when the anchor is at the corner of a 2d board
+        """
+        b = self.b44
+
+        coord = (0, 0)
+        expected = {(1, 0), (0, 1), (1, 1)}
+        actual = set(b.neighbours(coord))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_2d_centre(self):
+        """Find neighbours when the anchor is not at the corner of a 2d board
+        """
+        b = self.b44
+
+        coord = (1, 1)
+        expected = {
+            (0, 0), (1, 0), (2, 0),
+            (0, 1), (2, 1),
+            (0, 2), (1, 2), (2, 2)
+        }
+        actual = set(b.neighbours((1, 1)))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_3d_corner(self):
+        """Find neighbours when the anchor is at the corner of a 3d board
+        """
+        b = self.b333
+
+        coord = (0, 0, 0)
+        expected = {
+            (0, 0, 1), (0, 1, 0), (0, 1, 1), (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)
+        }
+        actual = set(b.neighbours(coord))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_3d_centre(self):
+        """Find neighbours when the anchor is not at the corner of a 3d board
+        """
+        b = self.b333
+
+        x, y, z = (1, 1, 1)
+        expected = set()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    expected.add((x + dx, y + dy, z + dz))
+        expected.remove((x, y, z))
+
+        actual = set(b.neighbours((1, 1, 1)))
+        self.assertEqual(expected, actual)
+
+
 if __name__ == '__main__':
     unittest.main()

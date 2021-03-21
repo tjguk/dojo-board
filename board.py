@@ -570,7 +570,7 @@ class Board(object):
         """
         offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
         for offset in offsets:
-            if all(o == 0 for o in offsets):
+            if all(o == 0 for o in offset):
                 continue
             #
             # Diagonal offsets have no zero component
