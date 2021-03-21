@@ -787,6 +787,23 @@ class BoardNeighbours(BoardTest):
 
     Neighbours should show all immediately adjacent coordinates which are on the board
     """
+    def test_neighbours_1d_center(self):
+        """
+        Really small 1 dimension board still has neighbours.
+        """
+        b = Board(dimension_sizes=(3,))
+        coord = (1,)
+        expected = {(0,), (2,)}
+        actual = set(b.neighbours(coord))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_1d_center_no_diagonals(self):
+        b = Board(dimension_sizes=(3,))
+        coord = (1,)
+        expected = {(0,), (2,)}
+        actual = set(b.neighbours(coord, include_diagonals=False))
+        self.assertEqual(expected, actual)
+
     def test_neighbours_2d_corner(self):
         """Find neighbours when the anchor is at the corner of a 2d board
         """
@@ -795,6 +812,16 @@ class BoardNeighbours(BoardTest):
         coord = (0, 0)
         expected = {(1, 0), (0, 1), (1, 1)}
         actual = set(b.neighbours(coord))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_2d_corner_exclude_diagonals(self):
+        """Find neighbours when the anchor is at the corner of a 2d board
+        """
+        b = self.b44
+
+        coord = (0, 0)
+        expected = {(1, 0), (0, 1)}
+        actual = set(b.neighbours(coord, include_diagonals=False))
         self.assertEqual(expected, actual)
 
     def test_neighbours_2d_centre(self):
@@ -811,6 +838,20 @@ class BoardNeighbours(BoardTest):
         actual = set(b.neighbours((1, 1)))
         self.assertEqual(expected, actual)
 
+    def test_neighbours_2d_centre_exclude_diagonals(self):
+        """Find neighbours when the anchor is not at the corner of a 2d board
+        """
+        b = self.b44
+
+        coord = (1, 1)
+        expected = {
+                    (1, 0),
+            (0, 1),         (2, 1),
+                    (1, 2)
+        }
+        actual = set(b.neighbours((1, 1), include_diagonals=False))
+        self.assertEqual(expected, actual)
+
     def test_neighbours_3d_corner(self):
         """Find neighbours when the anchor is at the corner of a 3d board
         """
@@ -821,6 +862,18 @@ class BoardNeighbours(BoardTest):
             (0, 0, 1), (0, 1, 0), (0, 1, 1), (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)
         }
         actual = set(b.neighbours(coord))
+        self.assertEqual(expected, actual)
+
+    def test_neighbours_3d_corner_exclude_diagonals(self):
+        """Find neighbours when the anchor is at the corner of a 3d board
+        """
+        b = self.b333
+
+        coord = (0, 0, 0)
+        expected = {
+            (0, 0, 1), (0, 1, 0), (1, 0, 0)
+        }
+        actual = set(b.neighbours(coord, include_diagonals=False))
         self.assertEqual(expected, actual)
 
     def test_neighbours_3d_centre(self):
@@ -839,6 +892,24 @@ class BoardNeighbours(BoardTest):
         actual = set(b.neighbours((1, 1, 1)))
         self.assertEqual(expected, actual)
 
+    def test_neighbours_3d_centre_exclude_diagonals(self):
+        """Find neighbours when the anchor is not at the corner of a 3d board
+        """
+        b = self.b333
+
+        x, y, z = (1, 1, 1)
+        expected = set()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    offset = (dx, dy, dz)
+                    # exclude the origin offset (0,0,0).
+                    # exclude any offset where more than one dimension changes (diagonal)
+                    if offset != (0, 0, 0) and sum(abs(o) for o in offset) == 1:
+                        expected.add((x + dx, y + dy, z + dz))
+
+        actual = set(b.neighbours((1, 1, 1), include_diagonals=False))
+        self.assertEqual(expected, actual)
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,15 +4,20 @@ import board
 class TestBoard(TestCase):
     def test_neighbours_original(self):
         b1 = board.Board((3, 3, 3))
-        neighbours = list(b1.neighbours((0, 0, 0), include_diagonals=False))
 
-        for coord in neighbours:
+        neighbour_coord = list(b1.neighbours((0,0,0), include_diagonals=True))
+        self.assertEqual(7, len(neighbour_coord))
+        self.assertSetEqual({(0, 1, 0), (1, 1, 0), (1, 0, 0),
+                             (0, 0, 1), (0, 1, 1), (1, 1, 1), (1, 0, 1)}, set(neighbour_coord))
+
+        neighbour_coord = list(b1.neighbours((0, 0, 0), include_diagonals=False))
+        for coord in neighbour_coord:
             print(coord)
-        self.assertEqual(3, len(neighbours))
+        #self.skipTest("diagonals seems to be producing wrong answer.")
+        self.assertEqual(3, len(neighbour_coord))
+        self.assertSetEqual({(0, 1, 0), (1, 0, 0),
+                             (0, 0, 1)}, set(neighbour_coord))
 
-
-        neighbours = list(b1.neighbours((0,0,0), include_diagonals=True))
-        self.assertEqual(7, len(neighbours))
 
     def test_two_by_two_board_neighbours(self):
         b = board.Board((2, 2))
