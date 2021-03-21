@@ -568,11 +568,10 @@ class Board(object):
         For a given coordinate, yield each of its nearest neighbours along
         all dimensions, including diagonal neighbours if requested (the default)
         """
-        offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
+        # fliter out the tuple(0,0,0...,0) offset.  This is the center and is not considered a neighbour
+        offsets = (o for o in itertools.product(*[(-1, 0, 1) for d in self.dimensions])
+                   if not all(dim == 0 for dim in o) )
         for offset in offsets:
-            if all(o == 0 for o in offset):
-                continue
-            #
             # Diagonal offsets have no zero component
             #
             if include_diagonals or any(o == 0 for o in offset):
