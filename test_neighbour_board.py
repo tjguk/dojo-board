@@ -45,3 +45,32 @@ class TestBoard(TestCase):
         self.assertEqual(3, len(neighbour_coord))
         neighbour_coord = list(b.neighbours(target_coord, include_diagonals=False))
         self.assertEqual(2, len(neighbour_coord))
+
+    def test_big_board_radius(self):
+        b = board.Board((32, 64))
+        target_coord = (10, 10)
+        neighbour_coord = list(b.neighbours(target_coord, radius=3, include_diagonals=True))
+        self.assertEqual(7*7-1, len(neighbour_coord))
+
+        target_coord = (0, 0)
+        neighbour_coord = list(b.neighbours(target_coord, radius=3, include_diagonals=True))
+        self.assertEqual(4*4-1, len(neighbour_coord))
+
+        target_coord = (31, 63)
+        neighbour_coord = list(b.neighbours(target_coord, radius=3, include_diagonals=True))
+        self.assertEqual(4*4-1, len(neighbour_coord))
+
+    def test_big_board_radius(self):
+        b = board.Board((13,13))
+        target_coord = (5, 5)
+        b[target_coord] = "C"
+        for coord in b.neighbours(target_coord, radius=3, include_diagonals=True):
+            b[coord] = "N"
+        b.draw()
+
+        b = board.Board((13, 13))
+        target_coord = (5, 5)
+        b[target_coord] = "C"
+        for coord in b.neighbours(target_coord, radius=3, include_diagonals=False):
+            b[coord] = "N"
+        b.draw()
