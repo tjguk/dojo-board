@@ -2,6 +2,7 @@ from unittest import TestCase
 import board
 
 class TestBoard(TestCase):
+
     def test_neighbours_original(self):
         b1 = board.Board((3, 3, 3))
 
