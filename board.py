@@ -562,23 +562,36 @@ class Board(object):
         for coord in itertools.product(*(range(i1, 1 + i2) for (i1, i2) in zip(*sorted([coord1, coord2])))):
             yield coord
 
-    def neighbours(self, coord, include_diagonals=True):
+    def neighbours(self, coord, include_diagonals=True, radius=1):
         """Iterate over all the neighbours of a coordinate
 
         For a given coordinate, yield each of its nearest neighbours along
         all dimensions, including diagonal neighbours if requested (the default)
         """
-        offsets = itertools.product(*[(-1, 0, 1) for d in self.dimensions])
+        dimension_size = len(self.dimensions)
+        #if including all possible points within radius.
+        if include_diagonals:
+            radius_points = range(-1 * radius, radius + 1)
+            # all offsets within radius excluding origin (0,0,...,0)
+            offsets = (offset for offset in itertools.product(*(radius_points for d in self.dimensions))
+                       if not all(o == 0 for o in offset))
+        else:
+            # exclude zero from possible radii as we're only producing radials
+            radius_points = list(r for r in range(-1 * radius, radius + 1) if r != 0)
+            # values project out from origin on each dimension.
+            # for example in 2d this produces (1,0), (0,1) in 3d (1,0,0), (0,1,0), (0,0,1)
+            dimension_identity = list(tuple(1 if i == j else 0 for j in range(dimension_size))
+                                      for i in range(dimension_size))
+            # for each dimension_identity, yield each radii
+            offsets = (tuple(rsi*i for i in d) for rsi in radius_points for d in dimension_identity)
+
         for offset in offsets:
-            if all(o == 0 for o in offset):
-                continue
             #
             # Diagonal offsets change in more than one dimension.
             #
-            if include_diagonals or sum(abs(o) for o in offset) == 1:
-                neighbour = tuple(c + o for (c, o) in zip(coord, offset))
-                if self._is_in_bounds(neighbour):
-                    yield neighbour
+            neighbour = tuple(c + o for (c, o) in zip(coord, offset))
+            if self._is_in_bounds(neighbour):
+                yield neighbour
 
     def runs_of_n(self, n, ignore_reversals=True):
         """Iterate over all dimensions to yield runs of length n
