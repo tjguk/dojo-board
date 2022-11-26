@@ -79,9 +79,10 @@ class Dimension(BaseDimension):
     is_finite = True
     is_infinite = False
 
-    def __init__(self, size):
+    def __init__(self, size, name=None):
         self._size = size
         self._range = range(size)
+        self._name = name
 
     def __iter__(self):
         return iter(self._range)
@@ -90,7 +91,8 @@ class Dimension(BaseDimension):
         return isinstance(self, type(other)) and self._size == other._size
 
     def __repr__(self):
-        return "<{}: {}>".format(self.__class__.__name__, self._size)
+        name = self._name if self._name else self.__class__.__name__
+        return "<{}: {}>".format(name, self._size)
 
     def __len__(self):
         return self._size
@@ -242,7 +244,7 @@ class Board(object):
             raise self.InvalidDimensionsError("Dimensions must be iterable (eg a tuple), not {}".format(type(dimension_sizes).__name__))
         if any(d <= 0 for d in dimension_sizes):
             raise self.InvalidDimensionsError("Each dimension must be >= 1")
-        self.dimensions = [InfiniteDimension if size == Infinity else Dimension(size) for size in dimension_sizes]
+        self.dimensions = [InfiniteDimension if size == Infinity else Dimension(size, name="Dimension-%s" % (n + 1)) for (n, size) in enumerate(dimension_sizes)]
 
         #
         # This can be a sub-board of another board: a slice.
@@ -416,6 +418,14 @@ class Board(object):
     def corners(self):
         dimension_bounds = [(0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions]
         return list(itertools.product(*dimension_bounds))
+
+    def edges(self):
+        for corner in corners:
+
+        return (pair for pair in itertools.combinations(self.corners(), 2) if any(a == b for (a, b) in zip(*pair)))
+
+    def diagonals(self):
+        return (pair for pair in itertools.combinations(self.corners(), 2) if not any(a == b for (a, b) in zip(*pair)))
 
     def copy(self, with_data=True):
         """Return a new board with the same dimensionality as the present one.
