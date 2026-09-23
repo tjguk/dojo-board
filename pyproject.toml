@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,11 +11,10 @@ authors = [
 description = "A standard Board mechanism for Dojo tasks"
 readme = "README.rst"
 requires-python = ">=3.2"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
 license = "MIT"
 
 [project.urls]
 Homepage = "https://github.com/tjguk/dojo-board"
+
+[tool.setuptools]
+py-modules = ["board"]

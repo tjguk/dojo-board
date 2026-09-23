@@ -419,10 +419,10 @@ class Board(object):
         dimension_bounds = [(0, len(d) -1 if d.is_finite else Infinity) for d in self.dimensions]
         return list(itertools.product(*dimension_bounds))
 
-    def edges(self):
-        for corner in corners:
+    #~ def edges(self):
+        #~ for corner in corners:
 
-        return (pair for pair in itertools.combinations(self.corners(), 2) if any(a == b for (a, b) in zip(*pair)))
+        #~ return (pair for pair in itertools.combinations(self.corners(), 2) if any(a == b for (a, b) in zip(*pair)))
 
     def diagonals(self):
         return (pair for pair in itertools.combinations(self.corners(), 2) if not any(a == b for (a, b) in zip(*pair)))
