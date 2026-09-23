@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "board"
+version = "1.1"
+authors = [
+  { name="Tim Golden", email="mail@timgolden.me.uk" },
+]
+description = "A standard Board mechanism for Dojo tasks"
+readme = "README.rst"
+requires-python = ">=3.2"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/tjguk/dojo-board"
